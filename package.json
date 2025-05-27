@@ -1,0 +1,23 @@
+{
+    "name": "gameconnecting",
+    "version": "1.0.0",
+    "description": "A real-time game server connection platform",
+    "main": "index.js",
+    "scripts": {
+        "start": "cd backend && npm start",
+        "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+        "dev": "cd backend && npm run dev"
+    },
+    "keywords": [
+        "game",
+        "server",
+        "chat",
+        "realtime"
+    ],
+    "author": "",
+    "license": "ISC",
+    "workspaces": [
+        "backend",
+        "frontend"
+    ]
+}

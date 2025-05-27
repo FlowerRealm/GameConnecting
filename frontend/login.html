@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GameConnecting</title>
+    <link rel="stylesheet" href="public/css/style.css">
+    <script type="module" src="src/components/auth.js"></script>
+    <script type="module" src="public/js/script.js"></script>
+</head>
+
+<body class="login-page">
+    <div class="container">
+        <h1>Welcome to GameConnecting</h1>
+        <div id="auth-container">
+            <h2>Login</h2>
+            <form id="login-form">
+                <div>
+                    <label for="login-username">Username:</label>
+                    <input type="text" id="login-username" required>
+                </div>
+                <div>
+                    <label for="login-password">Password:</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+            <p>Don't have an account? <a href="/register">Register here</a></p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
