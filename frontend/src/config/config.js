@@ -10,7 +10,7 @@ export const config = {
     isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
 
     // API 配置
-    backendUrl: 'http://localhost:3001',
+    backendUrl: process.env.BACKEND_URL || 'http://localhost:3001',
     apiKey: 'FlowerRealmGameConnecting',
 
     // 应用配置

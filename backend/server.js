@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import crypto from 'crypto';
+import cors from 'cors';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,13 +25,19 @@ const verifyApiKey = (req, res, next) => {
 // 创建Express应用
 const app = express();
 
+// 添加CORS中间件，允许来自前端的请求
+app.use(cors({
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    credentials: true
+}));
+
 // 创建HTTP服务器
 const server = createServer(app);
 
 // 配置Socket.IO
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -142,6 +149,7 @@ io.on('connection', (socket) => {
 });
 
 // 启动API服务器
-server.listen(3001, () => {
-    console.log('API服务器运行在端口 3001');
+const port = process.env.PORT || 3001; // 使用Render分配的端口，或默认使用3001
+server.listen(port, () => {
+    console.log(`API服务器运行在端口 ${port}`);
 });

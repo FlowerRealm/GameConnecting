@@ -209,7 +209,7 @@
         updateNavbar();
 
         if (auth.isAuthenticated()) {
-            const socket = io(location.origin.replace(/^http/, 'ws'), {
+            const socket = io('http://localhost:3001', {
                 auth: { token: auth.getToken() }
             });
 
