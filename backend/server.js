@@ -1,122 +1,147 @@
-const express = require('express');
-const path = require('path');
-const http = require('http'); // Import http module
-const socketIo = require('socket.io'); // Import socket.io
+import express from 'express';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import crypto from 'crypto';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// API密钥配置
+const API_KEY = process.env.API_KEY || 'FlowerRealmGameConnecting'; // 从环境变量读取API Key，如果不存在则使用默认值
+console.log('使用的API Key:', API_KEY);
+
+// API密钥验证中间件
+const verifyApiKey = (req, res, next) => {
+    const apiKey = req.header('X-API-Key');
+    if (!apiKey || apiKey !== API_KEY) {
+        return res.status(401).json({ success: false, message: 'Invalid API Key' });
+    }
+    next();
+};
+
+// 创建Express应用
 const app = express();
-// Create an HTTP server explicitly for socket.io
-const server = http.createServer(app);
-const io = socketIo(server); // Initialize socket.io with the server
 
-const port = process.env.PORT || 3000; // Use environment variable for port
+// 创建HTTP服务器
+const server = createServer(app);
 
-// Simple in-memory user storage (for demonstration purposes)
+// 配置Socket.IO
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+// API服务器配置（3001端口）
+app.use(express.json());
+app.use(verifyApiKey); // 对所有API路由应用密钥验证
+
+// 简单的内存存储
 const users = [];
-
-// Simple in-memory server storage
 const gameServers = [];
 
-// Middleware to parse JSON request bodies
-app.use(express.json());
-
-// Serve static files from the 'frontend' directory
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-// Serve login page
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/login.html'));
-});
-
-// Serve registration page
-app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/register.html'));
-});
-
-// Handle registration requests
-app.post('/register', (req, res) => {
+// 身份验证端点
+app.post('/auth/login', (req, res) => {
     const { username, password } = req.body;
-    console.log('Registration attempt:', { username, password });
+    const user = users.find(u => u.username === username);
+    if (user && user.password === password) {
+        const token = crypto.randomBytes(32).toString('hex');
+        res.json({
+            success: true,
+            message: '登录成功',
+            data: {
+                token,
+                username
+            }
+        });
+    } else {
+        res.status(401).json({ success: false, message: '用户名或密码错误' });
+    }
+});
 
-    // Check if username already exists
-    const existingUser = users.find(user => user.username === username);
-    if (existingUser) {
-        return res.status(400).send('Username already exists');
+app.post('/auth/register', (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
     }
 
-    // Add new user to storage
+    if (users.some(u => u.username === username)) {
+        return res.status(400).json({ success: false, message: '用户名已存在' });
+    }
+
     users.push({ username, password });
-    console.log('Users:', users);
-    res.status(201).send('Registration successful');
+    res.status(201).json({ success: true, message: '注册成功' });
 });
 
-// Handle login requests
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    console.log('Login attempt:', { username, password });
+// 服务器管理端点
+app.get('/servers', (req, res) => {
+    res.json({ success: true, data: gameServers });
+});
 
-    // Find user
-    const user = users.find(user => user.username === username);
+app.post('/servers', (req, res) => {
+    const { name } = req.body;
 
-    // Check if user exists and password matches
-    if (!user || user.password !== password) {
-        return res.status(401).send('Invalid username or password');
+    if (!name) {
+        return res.status(400).json({ success: false, message: '服务器名称不能为空' });
     }
 
-    res.status(200).send('Login successful');
+    const newServer = {
+        id: Date.now(),
+        name,
+        users: []
+    };
+
+    gameServers.push(newServer);
+    res.status(201).json({ success: true, data: newServer });
 });
 
-// Socket.io logic
+// Socket.IO身份验证
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    // TODO: 在这里实现更安全的token验证逻辑，例如验证JWT
+    if (token) {
+        // 假设token有效，将用户信息附加到socket对象上
+        socket.user = { username: 'authenticated_user' }; // 示例：替换为实际的用户信息
+        next();
+    } else {
+        next(new Error('Authentication error: Token missing or invalid'));
+    }
+});
+
+// Socket.IO连接处理
 io.on('connection', (socket) => {
-    console.log('a user connected');
+    console.log('用户已连接');
 
-    // Send current server list to the new user
-    socket.emit('server list', gameServers);
-
-    // Handle creating a new server
-    socket.on('create server', (serverName) => {
-        if (!serverName) return;
-        const newServer = { id: Date.now(), name: serverName, users: [] };
-        gameServers.push(newServer);
-        io.emit('server list', gameServers); // Broadcast updated list
-        console.log('Server created:', serverName);
-    });
-
-    // Handle joining a server
     socket.on('join server', (serverId) => {
         const server = gameServers.find(s => s.id === serverId);
         if (server) {
-            // Add user to server (basic implementation)
-            server.users.push(socket.id); // Using socket.id as a placeholder user identifier
-            socket.join(serverId); // Join the socket.io room for the server
-            io.to(serverId).emit('message', `User ${socket.id} joined ${server.name}`); // Notify server users
-            console.log(`User ${socket.id} joined server ${server.name}`);
+            socket.join(`server-${serverId}`);
+            console.log(`用户加入服务器: ${server.name}`);
         }
     });
 
-    // Handle chat messages within a server
-    socket.on('chat message', ({ serverId, message }) => {
-        io.to(serverId).emit('message', `User ${socket.id}: ${message}`); // Broadcast message to server room
+    socket.on('leave server', (serverId) => {
+        socket.leave(`server-${serverId}`);
+        console.log('用户离开服务器');
+    });
+
+    socket.on('chat message', (data) => {
+        if (data.serverId) {
+            io.to(`server-${data.serverId}`).emit('message', data.message);
+        }
     });
 
     socket.on('disconnect', () => {
-        console.log('user disconnected');
-        // TODO: Remove user from servers and update server list
+        console.log('用户已断开连接');
     });
 });
 
-// For Vercel deployment, export the server instance
-// module.exports = server;
-
-// Start the server only if this file is run directly (not imported as a module)
-if (require.main === module) {
-    server.listen(port, () => {
-        console.log(`Server listening at http://localhost:${port}`);
-    });
-}
-
-// Export the app for Vercel (or other serverless platforms)
-module.exports = app;
+// 启动API服务器
+server.listen(3001, () => {
+    console.log('API服务器运行在端口 3001');
+});
