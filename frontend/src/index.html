@@ -158,6 +158,7 @@
         import { ChatManager } from './components/chat.js';
         import { GameManager } from './components/game.js';
         import { AuthManager } from './components/auth.js';
+        import { config } from './config/config.js';
 
         const auth = AuthManager.getInstance();
         const authButtons = document.getElementById('authButtons');
@@ -209,7 +210,7 @@
         updateNavbar();
 
         if (auth.isAuthenticated()) {
-            const socket = io('http://localhost:3001', {
+            const socket = io(config.backendUrl, {
                 auth: { token: auth.getToken() }
             });
 
