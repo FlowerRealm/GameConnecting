@@ -20,7 +20,7 @@ export class AuthManager {
         if (AuthManager.#instance) {
             return AuthManager.#instance;
         }
-        this.#apiService = apiService.getInstance();
+        this.#apiService = apiService; // 直接使用导入的apiService实例
         AuthManager.#instance = this;
     }
 
