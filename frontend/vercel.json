@@ -12,6 +12,10 @@
     ],
     "routes": [
         {
+            "src": "/",
+            "dest": "public/index.html"
+        },
+        {
             "src": "/socket.io/(.*)",
             "dest": "webServer.js"
         },
