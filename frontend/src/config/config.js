@@ -7,14 +7,17 @@
  */
 export const config = {
     // 环境配置
-    isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+    isDevelopment: process.env.NODE_ENV !== 'production',
 
     // API 配置
-    backendUrl: 'https://gameconnecting.onrender.com',
-    apiKey: 'FlowerRealmGameConnecting',
+    backendUrl: process.env.BACKEND_URL || 'http://localhost:3001',
+    socketUrl: process.env.SOCKET_URL || 'ws://localhost:3001',
+    apiKey: process.env.API_KEY || 'FlowerRealmGameConnecting',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 
-    // 应用配置
-    maxRetryAttempts: 3,
-    connectionTimeout: 5000,
+    // Socket配置
+    maxRetryAttempts: parseInt(process.env.SOCKET_RECONNECTION_ATTEMPTS) || 3,
+    reconnectionDelay: parseInt(process.env.SOCKET_RECONNECTION_DELAY) || 1000,
+    connectionTimeout: parseInt(process.env.SOCKET_TIMEOUT) || 5000,
     heartbeatInterval: 30000
 };

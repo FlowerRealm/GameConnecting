@@ -1,15 +1,29 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// 加载环境变量
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // 静态文件服务
-app.use(express.static(path.join(__dirname, 'src')));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/src', express.static(path.join(__dirname, 'src')));
+
+// 健康检查端点
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV
+    });
+});
 
 // 路由处理
 app.get('/', (req, res) => {
@@ -24,7 +38,13 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'register.html'));
 });
 
+// 错误处理中间件
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
+
 // 启动服务器
 app.listen(port, () => {
-    console.log(`前端服务器运行在端口 ${port}`);
+    console.log(`Frontend server running in ${process.env.NODE_ENV} mode on port ${port}`);
 });

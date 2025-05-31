@@ -7,10 +7,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // 从环境变�
 export const initSocket = (httpServer) => {
     const io = new Server(httpServer, {
         cors: {
-            origin: process.env.FRONTEND_URL || ["http://localhost:3000"],
+            origin: ["https://game.flowerrealm.top", "http://localhost:3000"],
             methods: ["GET", "POST"],
-            credentials: true
-        }
+            credentials: true,
+            allowedHeaders: ["Authorization", "X-API-Key"]
+        },
+        transports: ['websocket'],
+        pingTimeout: 60000,
+        pingInterval: 25000
     });
 
     // 身份验证中间件

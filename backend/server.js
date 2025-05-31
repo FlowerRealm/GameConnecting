@@ -2,7 +2,7 @@
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-29 21:38:32
  * @LastEditors: FlowerRealm admin@flowerrealm.top
- * @LastEditTime: 2025-05-29 21:38:58
+ * @LastEditTime: 2025-05-29 21:39:10
  * @FilePath: /GameConnecting/backend/server.js
  */
 import express from 'express';
@@ -39,8 +39,10 @@ const verifyApiKey = (req, res, next) => {
 
 // 跨域配置
 app.use(cors({
-    origin: process.env.FRONTEND_URL || ["http://localhost:3000"],
-    credentials: true
+    origin: ["https://game.flowerrealm.top", "http://localhost:3000"],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
 }));
 
 // JSON解析中间件
@@ -49,6 +51,15 @@ app.use(express.json());
 // API路由
 app.use('/auth', authRouter);
 app.use('/servers', serversRouter);
+
+// 健康检查端点
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV
+    });
+});
 
 // 创建HTTP服务器
 const server = createServer(app);

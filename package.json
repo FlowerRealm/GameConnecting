@@ -4,24 +4,20 @@
     "description": "A real-time game server connection platform",
     "private": true,
     "scripts": {
-        "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
-        "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
+        "start": "npm run set-prod && concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
+        "dev": "npm run set-dev && concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
         "install-deps": "npm install && npm run install-workspaces",
-        "install-workspaces": "npm install -w backend && npm install -w frontend"
+        "install-workspaces": "npm install -w backend && npm install -w frontend",
+        "set-dev": "cp backend/.env.development backend/.env && cp frontend/.env.development frontend/.env",
+        "set-prod": "cp backend/.env.production backend/.env && cp frontend/.env.production frontend/.env"
     },
-    "keywords": [
-        "game",
-        "server",
-        "chat",
-        "realtime"
-    ],
-    "author": "FlowerRealm <admin@flowerrealm.top>",
-    "license": "ISC",
     "workspaces": [
         "backend",
         "frontend"
     ],
+    "author": "FlowerRealm <admin@flowerrealm.top>",
+    "license": "ISC",
     "devDependencies": {
-        "concurrently": "^8.2.2"
+        "concurrently": "^8.0.1"
     }
 }
