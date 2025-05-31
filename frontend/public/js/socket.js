@@ -1,4 +1,5 @@
 import { config } from './config.js';
+import { io } from 'https://cdn.socket.io/4.7.2/socket.io.esm.min.js';
 
 class SocketManager {
     constructor() {
@@ -12,18 +13,21 @@ class SocketManager {
             return;
         }
 
+        const socketUrl = config.isDevelopment ? config.development.socketUrl : config.production.socketUrl;
+        console.log(`Socket connecting to: ${socketUrl}`);
+
         const options = {
             transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: config.maxRetryAttempts,
-            reconnectionDelay: 1000,
+            reconnectionDelay: config.reconnectionDelay,
             timeout: config.connectionTimeout,
             auth: {
                 token: localStorage.getItem('token')
             }
         };
 
-        this.socket = io(config.socketUrl, options);
+        this.socket = io(socketUrl, options);
 
         this.socket.on('connect', () => {
             console.log('Connected to socket server');

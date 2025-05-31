@@ -6,6 +6,14 @@ import dotenv from 'dotenv';
 // 加载环境变量
 dotenv.config();
 
+// 打印环境信息
+console.log('Server Environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT,
+    BACKEND_URL: process.env.BACKEND_URL,
+    SOCKET_URL: process.env.SOCKET_URL
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

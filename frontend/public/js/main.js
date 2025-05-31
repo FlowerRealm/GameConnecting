@@ -61,7 +61,8 @@ window.onclick = function (event) {
 updateNavbar();
 
 if (auth.isAuthenticated()) {
-    const socket = io(config.backendUrl, {
+    const socketUrl = config.isDevelopment ? config.development.socketUrl : config.production.socketUrl;
+    const socket = io(socketUrl, {
         auth: { token: auth.getToken() }
     });
 

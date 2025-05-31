@@ -13,8 +13,9 @@ import { config } from './config.js';
  */
 class ApiService {
     constructor() {
-        this.baseUrl = config.backendUrl;
+        this.baseUrl = config.isDevelopment ? config.development.backendUrl : config.production.backendUrl;
         this.apiKey = config.apiKey;
+        console.log(`API Service initialized with baseUrl: ${this.baseUrl}`);
     }
 
     async request(endpoint, options = {}) {
