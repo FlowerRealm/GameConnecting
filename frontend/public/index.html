@@ -30,10 +30,10 @@
     <script src="/js/main.js" type="module"></script>
     <script>
         import { io } from 'https://cdn.socket.io/4.7.2/socket.io.esm.min.js';
-        import { ChatManager } from './components/chat.js';
-        import { GameManager } from './components/game.js';
-        import { AuthManager } from './components/auth.js';
-        import { config } from './config/config.js';
+        import { ChatManager } from './js/chat.js';
+        import { GameManager } from './js/game.js';
+        import { AuthManager } from './js/auth.js';
+        import { config } from './js/config.js';
 
         const auth = AuthManager.getInstance();
         const authButtons = document.getElementById('authButtons');

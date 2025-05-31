@@ -1,3 +1,10 @@
+<!--
+ * @Author: FlowerRealm admin@flowerrealm.top
+ * @Date: 2025-05-31 09:54:18
+ * @LastEditors: FlowerRealm admin@flowerrealm.top
+ * @LastEditTime: 2025-05-31 11:03:05
+ * @FilePath: /GameConnecting/frontend/public/register.html
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 
@@ -34,8 +41,8 @@
 
     <script src="/js/apiService.js" type="module"></script>
     <script src="/js/auth.js" type="module"></script>
-    <script>
-        import { AuthManager } from './components/auth.js';
+    <script type="module">
+        import { AuthManager } from './js/auth.js'; // 修正导入路径
 
         const auth = AuthManager.getInstance();
         if (auth.isAuthenticated()) {
