@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../db';
+import sequelize from '../index.js'; // 修改导入路径
 import bcrypt from 'bcrypt';
 
 const User = sequelize.define('User', {
