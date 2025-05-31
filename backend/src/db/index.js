@@ -12,17 +12,17 @@ const sequelize = new Sequelize(
     process.env.POSTGRES_PASSWORD || 'postgres',
     {
         host: process.env.POSTGRES_HOST || 'localhost',
-        port: process.env.POSTGRES_PORT || 5432,
+        port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
         dialect: 'postgres',
         logging: process.env.DB_LOGGING === 'true',
         pool: {
-            max: parseInt(process.env.DB_POOL_MAX || '5'),
-            min: parseInt(process.env.DB_POOL_MIN || '0'),
-            acquire: parseInt(process.env.DB_POOL_ACQUIRE || '30000'),
-            idle: parseInt(process.env.DB_POOL_IDLE || '10000')
+            max: parseInt(process.env.DB_POOL_MAX || '5', 10),
+            min: parseInt(process.env.DB_POOL_MIN || '0', 10),
+            acquire: parseInt(process.env.DB_POOL_ACQUIRE || '30000', 10),
+            idle: parseInt(process.env.DB_POOL_IDLE || '10000', 10)
         },
         retry: {
-            max: parseInt(process.env.DB_RETRY_MAX || '3')
+            max: parseInt(process.env.DB_RETRY_MAX || '3', 10)
         }
     }
 );
@@ -43,7 +43,7 @@ export const initDb = async () => {
                 console.error('达到最大重试次数，退出程序。');
                 process.exit(1);
             }
-            console.log(`${RETRY_INTERVAL/1000}秒后重试...`);
+            console.log(`${RETRY_INTERVAL / 1000}秒后重试...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL));
         }
     }

@@ -3,7 +3,7 @@ import User from '../db/models/user.js';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // 从环境变量获取密钥
 
 router.post('/register', async (req, res) => {
     try {
