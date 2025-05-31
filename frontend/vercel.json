@@ -27,5 +27,17 @@
             "src": "/(.*)",
             "dest": "public/$1"
         }
-    ]
+    ],
+    "build": {
+        "env": {
+            "NODE_ENV": "production",
+            "BACKEND_URL": "https://gameconnecting.onrender.com",
+            "SOCKET_URL": "wss://gameconnecting.onrender.com",
+            "API_KEY": "FlowerRealmGameConnecting",
+            "FRONTEND_URL": "https://game.flowerrealm.top",
+            "SOCKET_RECONNECTION_ATTEMPTS": "3",
+            "SOCKET_RECONNECTION_DELAY": "1000",
+            "SOCKET_TIMEOUT": "5000"
+        }
+    }
 }

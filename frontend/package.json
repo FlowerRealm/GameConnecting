@@ -6,7 +6,8 @@
     "private": true,
     "scripts": {
         "start": "node webServer.js",
-        "dev": "nodemon webServer.js"
+        "dev": "nodemon webServer.js",
+        "build": "node scripts/build-config.js"
     },
     "dependencies": {
         "dotenv": "^16.0.3",
