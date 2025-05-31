@@ -2,10 +2,10 @@
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-29 19:19:45
  * @LastEditors: FlowerRealm admin@flowerrealm.top
- * @LastEditTime: 2025-05-29 19:45:08
- * @FilePath: /GameConnecting/frontend/src/components/auth.js
+ * @LastEditTime: 2025-05-31 10:50:09
+ * @FilePath: /GameConnecting/frontend/public/js/auth.js
  */
-import { ApiService } from '../api/apiService.js';
+import { ApiService } from './apiService';
 
 /**
  * 认证管理类 - 处理用户登录、注册、会话管理

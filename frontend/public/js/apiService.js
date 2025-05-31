@@ -6,7 +6,7 @@
  * @FilePath: /GameConnecting/frontend/src/api/apiService.js
  */
 // API Service for handling all backend communication
-import { config } from '../config/config.js';
+import { config } from './config.js';
 
 /**
  * API 服务类 - 处理所有与后端的通信

@@ -1,4 +1,11 @@
-import { config } from '../config/config.js';
+/*
+ * @Author: FlowerRealm admin@flowerrealm.top
+ * @Date: 2025-05-31 10:24:24
+ * @LastEditors: FlowerRealm admin@flowerrealm.top
+ * @LastEditTime: 2025-05-31 10:51:08
+ * @FilePath: /GameConnecting/frontend/public/js/index.js
+ */
+import { config } from './config.js';
 
 class SocketManager {
     constructor() {
