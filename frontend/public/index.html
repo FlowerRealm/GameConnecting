@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GameConnecting</title>
-    <link rel="stylesheet" href="/src/styles/style.css">
+    <link rel="stylesheet" href="/styles/style.css">
 </head>
 
 <body>
@@ -22,7 +22,12 @@
         </div>
     </div>
 
-    <script type="module">
+    <script src="/js/socket.js" type="module"></script>
+    <script src="/js/apiService.js" type="module"></script>
+    <script src="/js/auth.js" type="module"></script>
+    <script src="/js/chat.js" type="module"></script>
+    <script src="/js/game.js" type="module"></script>
+    <script>
         import { io } from 'https://cdn.socket.io/4.7.2/socket.io.esm.min.js';
         import { ChatManager } from './components/chat.js';
         import { GameManager } from './components/game.js';

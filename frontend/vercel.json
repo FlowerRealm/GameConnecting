@@ -4,12 +4,28 @@
         {
             "src": "webServer.js",
             "use": "@vercel/node"
+        },
+        {
+            "src": "public/**",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
         {
-            "src": "/(.*)",
+            "src": "/",
+            "dest": "public/index.html"
+        },
+        {
+            "src": "/socket.io/(.*)",
             "dest": "webServer.js"
+        },
+        {
+            "src": "/api/(.*)",
+            "dest": "webServer.js"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "public/$1"
         }
     ]
 }
