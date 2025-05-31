@@ -5,7 +5,7 @@
  * @LastEditTime: 2025-05-31 10:50:09
  * @FilePath: /GameConnecting/frontend/public/js/auth.js
  */
-import { ApiService } from './apiService';
+import { apiService } from './apiService.js'; // 修正导入路径
 
 /**
  * 认证管理类 - 处理用户登录、注册、会话管理
@@ -20,7 +20,7 @@ export class AuthManager {
         if (AuthManager.#instance) {
             return AuthManager.#instance;
         }
-        this.#apiService = ApiService.getInstance();
+        this.#apiService = apiService.getInstance();
         AuthManager.#instance = this;
     }
 

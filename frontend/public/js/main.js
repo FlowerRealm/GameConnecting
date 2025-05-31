@@ -1,8 +1,15 @@
+/*
+ * @Author: FlowerRealm admin@flowerrealm.top
+ * @Date: 2025-05-31 10:54:40
+ * @LastEditors: FlowerRealm admin@flowerrealm.top
+ * @LastEditTime: 2025-05-31 11:08:43
+ * @FilePath: /GameConnecting/frontend/public/js/main.js
+ */
 import { io } from 'https://cdn.socket.io/4.7.2/socket.io.esm.min.js';
-import { ChatManager } from './chat.js'; // 假设chat.js在同一目录
-import { GameManager } from './game.js'; // 假设game.js在同一目录
-import { AuthManager } from './auth.js'; // 假设auth.js在同一目录
-import { config } from './config.js'; // 假设config.js在同一目录
+import { ChatManager } from './chat.js';
+import { GameManager } from './game.js';
+import { AuthManager } from './auth.js';
+import { config } from './config.js';
 
 const auth = AuthManager.getInstance();
 const authButtons = document.getElementById('authButtons');

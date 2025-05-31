@@ -112,35 +112,7 @@
         </form>
     </div>
 
-    <script src="/js/apiService.js" type="module"></script>
-    <script src="/js/auth.js" type="module"></script>
-    <script type="module">
-        import { AuthManager } from './js/auth.js';
-
-        const auth = AuthManager.getInstance();
-        if (auth.isAuthenticated()) {
-            window.location.href = '/';
-        }
-
-        const form = document.getElementById('login-form');
-        const error = document.getElementById('error');
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            const result = await auth.login(username, password);
-
-            if (result.success) {
-                window.location.href = '/';
-            } else {
-                error.textContent = result.message;
-                error.style.display = 'block';
-            }
-        });
-    </script>
+    <script src="/js/login.js" type="module"></script>
 </body>
 
 </html>
