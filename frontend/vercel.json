@@ -2,10 +2,6 @@
     "version": 2,
     "builds": [
         {
-            "src": "webServer.js",
-            "use": "@vercel/node"
-        },
-        {
             "src": "public/**",
             "use": "@vercel/static"
         }
@@ -17,15 +13,15 @@
         },
         {
             "src": "/socket.io/(.*)",
-            "dest": "webServer.js"
+            "dest": "https://gameconnecting.onrender.com/socket.io/$1"
         },
         {
             "src": "/api/(.*)",
-            "dest": "webServer.js"
+            "dest": "https://gameconnecting.onrender.com/api/$1"
         },
         {
             "src": "/(.*)",
-            "dest": "public/$1"
+            "dest": "public/index.html"
         }
     ],
     "build": {
