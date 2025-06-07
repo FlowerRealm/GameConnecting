@@ -1,0 +1,23 @@
+/* /home/flowerrealm/GameConnecting/frontend/public/styles/pages/servers.css */
+
+/* 服务器列表页面特定样式 */
+.servers-page-container {
+    margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 20px);
+    margin-left: 20px;
+    /* 20px from left edge */
+    margin-right: 20px;
+    /* 20px from right edge */
+    margin-bottom: 20px;
+    width: auto;
+    /* Let margins define width */
+    /* max-width: 1400px; */
+    /* Removed max-width */
+    padding: 20px;
+    /* 20px internal padding */
+    box-sizing: border-box;
+    /* padding 和 border 计算在width/height内 */
+    display: flex;
+    /* 默认为flex布局，垂直排列子元素 */
+    flex-direction: column;
+    /* 确保标题和列表垂直排列 */
+}

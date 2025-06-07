@@ -8,35 +8,37 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-console.log('Environment variables loaded:', {
-    NODE_ENV: process.env.NODE_ENV,
-    BACKEND_URL: process.env.BACKEND_URL,
-    SOCKET_URL: process.env.SOCKET_URL,
-    FRONTEND_URL: process.env.FRONTEND_URL
-});
+const env = process.env.NODE_ENV || 'development';
 
-const configContent = `
-export const config = {
-    isDevelopment: ${process.env.NODE_ENV !== 'production'},
-    backendUrl: '${process.env.BACKEND_URL}',
-    socketUrl: '${process.env.SOCKET_URL}',
-    apiKey: '${process.env.API_KEY}',
-    frontendUrl: '${process.env.FRONTEND_URL}',
-    maxRetryAttempts: ${process.env.SOCKET_RECONNECTION_ATTEMPTS || 3},
-    reconnectionDelay: ${process.env.SOCKET_RECONNECTION_DELAY || 1000},
-    connectionTimeout: ${process.env.SOCKET_TIMEOUT || 5000},
-    heartbeatInterval: 30000,
-    production: {
-        backendUrl: 'https://gameconnecting.onrender.com',
-        socketUrl: 'wss://gameconnecting.onrender.com',
-        frontendUrl: 'https://game.flowerrealm.top'
-    },
-    development: {
-        backendUrl: 'http://localhost:3001',
-        socketUrl: 'ws://localhost:3001',
-        frontendUrl: 'http://localhost:3000'
+// 检查必要的环境变量
+const requiredEnvVars = ['BACKEND_URL', 'SOCKET_URL', 'FRONTEND_URL'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+    console.error('错误：缺少必要的环境变量：', missingEnvVars.join(', '));
+    process.exit(1);
+}
+
+// 从环境变量获取配置
+const config = {
+    isDevelopment: env === 'development',
+    backendUrl: process.env.BACKEND_URL,
+    socketUrl: process.env.SOCKET_URL,
+    frontendUrl: process.env.FRONTEND_URL,
+    apiKey: process.env.API_KEY || '',
+    socket: {
+        maxRetryAttempts: parseInt(process.env.SOCKET_RECONNECTION_ATTEMPTS || '3', 10),
+        reconnectionDelay: parseInt(process.env.SOCKET_RECONNECTION_DELAY || '1000', 10),
+        connectionTimeout: parseInt(process.env.SOCKET_TIMEOUT || '5000', 10),
+        heartbeatInterval: 30000
     }
 };
+
+console.log('Environment:', env);
+console.log('Config generated:', config);
+
+const configContent = `
+export const config = ${JSON.stringify(config, null, 2)};
 `;
 
 const outputPath = path.resolve(__dirname, '../public/js/config.js');

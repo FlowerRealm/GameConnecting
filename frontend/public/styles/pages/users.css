@@ -1,0 +1,186 @@
+/* /home/flowerrealm/GameConnecting/frontend/public/styles/pages/users.css */
+
+/* 用户列表页面 (friends.html / /users route) 特定样式 */
+
+/* 1. 确保页面主内容在导航栏下方 */
+/* .friends-page-container is the main content wrapper for the user list page */
+.friends-page-container {
+    margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 20px);
+    margin-left: 20px;
+    /* 20px from left edge */
+    margin-right: 20px;
+    /* 20px from right edge */
+    margin-bottom: 20px;
+    width: auto;
+    /* Let margins define width */
+    /* max-width: 1400px; */
+    /* Removed max-width */
+    padding: 20px;
+    /* 20px internal padding */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    /* Include padding and border in the element's total width and height */
+}
+
+/* 2. 确保标题和表格垂直排列并有间距 */
+.friends-page-header {
+    display: block;
+    /* Ensure it's a block-level element */
+    width: 100%;
+    /* Take full width */
+    margin-bottom: 25px;
+    /* Space between title and table */
+}
+
+.friends-page-header h1 {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 2.2em;
+    /* Adjust title size */
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+#userTableContainer {
+    display: block;
+    /* Ensure it's a block-level element */
+    width: 100%;
+    overflow-x: auto;
+    /* Allow horizontal scrolling for wide tables */
+}
+
+/* --- 用户列表格基本样式 --- */
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: rgba(255, 255, 255, 0.03);
+    /* Subtle background for glassmorphism */
+    border-radius: 8px;
+    overflow: hidden;
+    /* Important for border-radius on tables */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    /* Softer shadow */
+}
+
+.user-table th,
+.user-table td {
+    padding: 12px 18px;
+    /* Increased padding for better readability */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+    color: var(--text-color);
+    vertical-align: middle;
+    /* Align cell content vertically */
+}
+
+.user-table th {
+    background-color: rgba(255, 255, 255, 0.08);
+    /* Slightly darker header for contrast */
+    font-weight: 600;
+    color: var(--text-color);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    /* Smaller, more refined header text */
+    letter-spacing: 0.075em;
+}
+
+.user-table td {
+    font-size: 0.9em;
+}
+
+.user-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.user-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    /* Subtle hover effect */
+}
+
+.user-table .user-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    /* Space between icon and text */
+}
+
+.user-table .user-info i {
+    color: var(--primary-color);
+    font-size: 1.2em;
+    /* Slightly larger icon */
+}
+
+.user-table .no-data {
+    text-align: center;
+    padding: 25px;
+    /* More padding for empty state */
+    color: var(--text-light);
+    font-style: italic;
+    font-size: 1em;
+}
+
+.user-table .no-data i {
+    margin-right: 20px;
+    font-size: 1.3em;
+    vertical-align: middle;
+}
+
+/* --- 分页容器样式 --- */
+.pagination-container {
+    margin-top: 30px;
+    /* More space above pagination */
+    padding: 20px 0;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    /* Lighter separator */
+}
+
+.pagination-button {
+    background-color: transparent;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.5);
+    /* Primary color border */
+    color: var(--primary-color);
+    padding: 9px 18px;
+    /* Slightly larger buttons */
+    margin: 0 6px;
+    border-radius: 25px;
+    /* Fully rounded */
+    cursor: pointer;
+    transition: all 0.25s ease-in-out;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.pagination-button:hover:not(:disabled) {
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+    /* Light primary background on hover */
+    border-color: rgba(var(--primary-color-rgb), 0.7);
+    transform: translateY(-2px);
+    /* More noticeable lift */
+    box-shadow: 0 4px 8px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.pagination-button:disabled {
+    border-color: rgba(0, 0, 0, 0.15);
+    color: rgba(0, 0, 0, 0.4);
+    /* Darker disabled text for better visibility */
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.pagination-button i.fa-chevron-left {
+    margin-right: 6px;
+}
+
+.pagination-button i.fa-chevron-right {
+    margin-left: 6px;
+}
+
+.pagination-info {
+    margin: 0 18px;
+    /* More space around page info */
+    color: var(--text-light);
+    font-size: 0.9em;
+    vertical-align: middle;
+}

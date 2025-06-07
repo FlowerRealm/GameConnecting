@@ -1,0 +1,118 @@
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    /* 视觉样式 (背景, 毛玻璃, 边框, 圆角, 阴影) */
+    /* 现在完全期望由 style.css 中的 .glassmorphic-container 类提供 */
+    /* 例如: background, backdrop-filter, border, border-radius, box-shadow */
+    width: 90%;
+    max-width: 600px;
+    margin: 10vh auto;
+    padding: 2rem;
+}
+
+.modal-content h2 {
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+}
+
+.modal-info {
+    margin-bottom: 2rem;
+}
+
+.info-row {
+    display: flex;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.modal-close {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--background-color);
+}
+
+.modal-button {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary-color);
+    background: transparent;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    z-index: 1;
+}
+
+.modal-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: transparent;
+    transition: background-color 0.2s;
+    z-index: 0;
+    border-radius: 6px;
+}
+
+.modal-button>* {
+    position: relative;
+    z-index: 1;
+}
+
+.modal-button.primary {
+    color: white;
+}
+
+.modal-button.primary::before {
+    background-color: var(--primary-color);
+}
+
+.modal-button.primary:hover::before {
+    background-color: var(--primary-hover);
+}
+
+.modal-button:hover::before {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media screen and (max-width: 768px) {
+    .modal-content {
+        padding: 1.5rem;
+        margin: 5vh auto;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+    }
+
+    .modal-buttons button {
+        width: 100%;
+    }
+}

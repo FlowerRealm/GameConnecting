@@ -1,0 +1,224 @@
+/* 管理界面样式 */
+.admin-container {
+    margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 20px);
+    /* 考虑导航栏的顶部偏移和高度，外加20px间距 */
+    margin-left: 20px;
+    /* 20px from left edge */
+    margin-right: 20px;
+    /* 20px from right edge */
+    margin-bottom: 20px;
+    /* 底部外边距 */
+    padding: 20px;
+    /* 20px internal padding */
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    width: auto;
+    /* Let margins define width */
+    /* max-width: 1400px; */
+    /* Removed max-width */
+    backdrop-filter: blur(10px);
+    box-sizing: border-box;
+    /* 确保 padding 和 border 计算在width/height内 */
+}
+
+/* 表格样式 */
+.user-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 2rem;
+}
+
+.user-table th,
+.user-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-table th {
+    font-weight: 600;
+    color: var(--text-light);
+    background-color: rgba(0, 0, 0, 0.02);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.user-table tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* 状态标签 */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.status-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.status-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+/* 分页 */
+.pagination {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2rem;
+}
+
+.pagination .btn {
+    min-width: 40px;
+}
+
+.pagination .btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* 标签栏样式 */
+.tab-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.tab-button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: color 0.2s, transform 0.2s;
+    position: relative;
+    overflow: visible;
+}
+
+.tab-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: transparent;
+    transition: background-color 0.2s;
+    z-index: -1;
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Ensure content is above the pseudo-element */
+.tab-button * {
+    z-index: 2;
+    position: relative;
+}
+
+.tab-button:hover {
+    transform: translateY(-1px);
+}
+
+.tab-button:not(.active):hover::before {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tab-button.active {
+    color: white;
+    /* The ::before pseudo-element handles the background */
+}
+
+.tab-button.active::before {
+    background-color: var(--primary-color);
+    /* z-index is already -1 from the base .tab-button::before rule */
+}
+
+/* 用户信息样式 */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-info i {
+    font-size: 1.25rem;
+    color: var(--text-light);
+}
+
+/* 备注文本样式 */
+.note-text {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-text:hover {
+    white-space: normal;
+    word-break: break-word;
+    position: relative;
+    z-index: 1;
+}
+
+/* 空数据提示 */
+.no-data {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--text-light);
+}
+
+.no-data i {
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.user-table {
+    min-width: 800px;
+}
+
+
+@media screen and (max-width: 768px) {
+    .admin-container {
+        padding: 1rem;
+        margin-top: calc(var(--navbar-height) + 1rem);
+    }
+
+    .tab-container {
+        flex-wrap: wrap;
+    }
+
+    .tab-button {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem 1rem;
+    }
+}

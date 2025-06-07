@@ -1,0 +1,36 @@
+/* 重置和基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #4CAF50;
+    --primary-hover: #45a049;
+    --background-color: #f5f7fa;
+    --surface-color: #ffffff;
+    --text-color: #333333;
+    --text-light: #666666;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.05);
+    --navbar-height: 60px;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--background-color) url('/images/Background-pc.webp') no-repeat center center fixed;
+    background-size: cover;
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+@media screen and (max-width: 768px) {
+    body {
+        background-image: url('/images/Background-phone.jpg');
+        background-attachment: scroll;
+        background-position: center top;
+    }
+}

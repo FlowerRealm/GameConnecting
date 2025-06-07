@@ -1,0 +1,157 @@
+.navbar {
+    /* 视觉样式 (背景, 毛玻璃效果, 边框, 圆角, 阴影) */
+    /* 现在期望由 style.css 中的 .glassmorphic-container 类提供 */
+    padding: 0;
+    /* Padding will be handled by navbar-content-wrapper */
+    position: fixed;
+    top: 20px;
+    /* 20px from top edge */
+    left: 20px;
+    /* 20px from left edge */
+    right: 20px;
+    /* 20px from right edge */
+    width: auto;
+    /* Let left/right define width */
+    z-index: 1000;
+    height: var(--navbar-height);
+    box-sizing: border-box;
+}
+
+.navbar .navbar-content-wrapper {
+    width: 100%;
+    /* Fill the .navbar element */
+    /* max-width: 1400px; */
+    /* Removed max-width */
+    height: 100%;
+    margin: 0;
+    /* No auto margin needed for 100% width */
+    padding: 0 20px;
+    /* 20px internal padding for navbar items */
+    box-sizing: border-box;
+    /* Include padding in width calculation */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.navbar-menu {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.navbar-auth {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.nav-item {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+    font-weight: 500;
+    border: 1px solid transparent;
+    background: transparent;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-item.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+@media screen and (max-width: 768px) {
+    .navbar-brand {
+        display: none;
+    }
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 500;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.user-avatar:hover {
+    transform: scale(1.05);
+}
+
+.dropdown-content {
+    display: none;
+    /* JS 控制显示/隐藏 */
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    /* 定位在头像下方并留出间隙 */
+    background-color: var(--surface-color);
+    min-width: 180px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    z-index: 1001;
+    /* 确保在导航栏其他元素之上 */
+    border-radius: 8px;
+    padding: 0.5rem 0;
+    border: 1px solid var(--border-color);
+}
+
+.dropdown-content.show {
+    display: block;
+    /* 点击头像时显示 */
+    animation: dropdownAppear 0.2s ease-out;
+}
+
+.dropdown-content a {
+    color: var(--text-color);
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    display: block;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.dropdown-content a:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--primary-color);
+}
+
+@keyframes dropdownAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

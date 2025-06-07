@@ -1,0 +1,52 @@
+<!--
+ * @Author: FlowerRealm admin@flowerrealm.top
+ * @Date: 2025-05-31 15:12:10
+ * @LastEditors: FlowerRealm admin@flowerrealm.top
+ * @LastEditTime: 2025-06-07 11:04:39
+ * @FilePath: /GameConnecting/frontend/public/pages/friends.html
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户列表 - GameConnecting</title>
+    <link rel="stylesheet" href="/styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div id="notification-container"></div>
+    <nav class="navbar">
+        <div class="navbar-content-wrapper"> <!-- 新增的包裹容器 -->
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+            </div>
+            <div class="navbar-auth" id="authButtons">
+            </div>
+        </div>
+    </nav>
+
+    <main class="container friends-page-container glassmorphic-container">
+        <div class="friends-page-header">
+            <h1>用户列表</h1>
+        </div>
+
+        <div id="userTableContainer" class="user-list-container">
+            <!-- 用户表格将由 JavaScript 动态插入 -->
+        </div>
+        <div id="pagination" class="pagination-container">
+            <!-- 分页将由 JavaScript 动态插入 -->
+        </div>
+    </main>
+
+    <script src="/js/config.js" type="module"></script>
+    <script src="/js/store.js" type="module"></script>
+    <script src="/js/apiService.js" type="module"></script>
+    <script src="/js/auth.js" type="module"></script>
+    <script src="/js/navbar.js" type="module"></script>
+    <script src="/js/friends.js" type="module"></script>
+</body>
+
+</html>

@@ -2,8 +2,8 @@
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-31 09:54:18
  * @LastEditors: FlowerRealm admin@flowerrealm.top
- * @LastEditTime: 2025-05-31 13:01:11
- * @FilePath: /GameConnecting/frontend/public/index.html
+ * @LastEditTime: 2025-06-07 11:15:50
+ * @FilePath: /GameConnecting/frontend/public/pages/index.html
 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -17,8 +17,13 @@
 
 <body>
     <nav class="navbar">
-        <a href="/" class="navbar-brand">GameConnecting</a>
-        <div class="navbar-auth" id="authButtons">
+        <div class="navbar-content-wrapper"> <!-- 新增的包裹容器 -->
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+                <!-- 导航菜单将由 JavaScript 动态插入 -->
+            </div>
+            <div class="navbar-auth" id="authButtons">
+            </div>
         </div>
     </nav>
 

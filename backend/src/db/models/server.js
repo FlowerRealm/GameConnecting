@@ -1,31 +1,50 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../index.js';
-import User from './user.js';
 
-const Server = sequelize.define('Server', {
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    ipAddress: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    port: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    createdBy: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: User,
-            key: 'id'
+export default (sequelize, User) => {
+    const Server = sequelize.define('Server', {
+        name: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            validate: {
+                len: [1, 50]
+            }
         },
-        allowNull: false
-    }
-});
+        description: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            validate: {
+                len: [0, 200]
+            }
+        },
+        createdBy: {
+            type: DataTypes.INTEGER,
+            references: {
+                model: User, // Assumes User model is passed correctly
+                key: 'id'
+            },
+            allowNull: false
+        },
+        lastActivity: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            allowNull: false
+        }
+    });
 
-User.hasMany(Server, { foreignKey: 'createdBy' });
-Server.belongsTo(User, { foreignKey: 'createdBy' });
+    const ServerMember = sequelize.define('ServerMember', {
+        role: {
+            type: DataTypes.ENUM('owner', 'member'),
+            defaultValue: 'member'
+        },
+        joinedAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW
+        },
+        lastActive: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW
+        }
+    });
 
-export default Server;
+    return { Server, ServerMember };
+};

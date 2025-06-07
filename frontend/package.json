@@ -6,8 +6,10 @@
     "private": true,
     "scripts": {
         "start": "node webServer.js",
-        "dev": "nodemon webServer.js",
-        "build": "node scripts/build-config.js"
+        "dev": "npm run config:dev && nodemon webServer.js",
+        "build": "npm run config:prod",
+        "config:dev": "cross-env NODE_ENV=development node scripts/build-config.js",
+        "config:prod": "cross-env NODE_ENV=production node scripts/build-config.js"
     },
     "dependencies": {
         "dotenv": "^16.0.3",
@@ -15,6 +17,7 @@
         "socket.io-client": "^4.7.2"
     },
     "devDependencies": {
+        "cross-env": "^7.0.3",
         "nodemon": "^3.0.1"
     },
     "engines": {

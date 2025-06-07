@@ -1,0 +1,58 @@
+/* 通用容器布局 */
+.container {
+    flex: 1;
+    display: flex;
+    /* padding-top 用于清除固定导航栏的间距，现在由各页面容器的 margin-top 处理 */
+}
+
+.game-container {
+    flex: 1;
+    position: relative;
+}
+
+/* 通用容器样式 */
+.login-container,
+.register-container {
+    /* background, border-radius, border, backdrop-filter are now handled by .glassmorphic-container in HTML */
+    padding: 20px;
+    margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 4rem);
+    /* Adjusted top margin to use new offset */
+    margin-left: 20px;
+    /* 20px from left edge */
+    margin-right: 20px;
+    /* 20px from right edge */
+    margin-bottom: 20px;
+    width: auto;
+}
+
+.admin-container,
+.friends-container,
+.servers-container {
+    /* These are generic fallbacks, page-specific CSS will take precedence */
+    width: auto;
+    /* Let margins define width */
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    /* 20px internal padding */
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(20px);
+    margin: calc(var(--navbar-top-offset) + var(--navbar-height) + 2rem) 20px 2rem 20px;
+    /* Adjusted margins */
+}
+
+@media screen and (max-width: 768px) {
+
+    .login-container,
+    .register-container {
+        padding: 1.5rem;
+        margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 2rem);
+    }
+
+    .admin-container,
+    .friends-container,
+    .servers-container {
+        padding: 1.5rem;
+        margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 1.5rem);
+    }
+}

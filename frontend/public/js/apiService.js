@@ -1,93 +1,104 @@
-/*
- * @Author: FlowerRealm admin@flowerrealm.top
- * @Date: 2025-05-29 19:19:45
- * @LastEditors: FlowerRealm admin@flowerrealm.top
- * @LastEditTime: 2025-05-29 19:45:24
- * @FilePath: /GameConnecting/frontend/src/api/apiService.js
- */
-// API Service for handling all backend communication
 import { config } from './config.js';
+import { store } from './store.js';
+import { ErrorHandler } from './errorHandler.js';
 
 /**
  * API 服务类 - 处理所有与后端的通信
  */
 class ApiService {
+    static #instance = null;
+
     constructor() {
-        this.baseUrl = config.isDevelopment ? config.development.backendUrl : config.production.backendUrl;
+        if (ApiService.#instance) {
+            return ApiService.#instance;
+        }
+        if (!config.backendUrl) {
+            throw new Error('Backend URL is not defined in config');
+        }
+        this.baseUrl = config.backendUrl;
         this.apiKey = config.apiKey;
-        console.log(`API Service initialized with baseUrl: ${this.baseUrl}`);
+        this.requestQueue = new Set();
+
+        ApiService.#instance = this;
+    }
+
+    static getInstance() {
+        if (!ApiService.#instance) {
+            ApiService.#instance = new ApiService();
+        }
+        return ApiService.#instance;
+    }
+
+    updateLoadingState() {
+        store.setState('isLoading', this.requestQueue.size > 0);
     }
 
     async request(endpoint, options = {}) {
-        const token = localStorage.getItem('token');
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-API-Key': this.apiKey,
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            ...options.headers
-        };
+        const requestId = Date.now().toString();
+        this.requestQueue.add(requestId);
+        this.updateLoadingState();
 
         try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                ...options,
-                headers
-            });
+            const token = localStorage.getItem('gameconnecting_token');
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-API-Key': this.apiKey,
+                'X-Request-ID': requestId,
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...options.headers
+            };
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'API请求失败');
+            const requestOptions = {
+                ...options,
+                headers,
+                credentials: 'include',
+                mode: 'cors'
+            };
+
+            const response = await fetch(`${this.baseUrl}${endpoint}`, requestOptions);
+            let data;
+            let isJsonResponse = true;
+
+            try {
+                data = await response.json();
+            } catch (error) {
+                isJsonResponse = false;
             }
 
-            return await response.json();
+            if (!response.ok) {
+                const error = {
+                    statusCode: response.status,
+                    message: isJsonResponse && data?.message ? data.message : this.#getDefaultErrorMessage(response.status),
+                    data: isJsonResponse ? data : null
+                };
+                throw error;
+            }
+            return {
+                success: response.ok,
+                data: response.ok ? data : null,
+                message: isJsonResponse && data?.message ? data.message : this.#getDefaultErrorMessage(response.status),
+                statusCode: response.status
+            };
+
         } catch (error) {
-            console.error('API请求错误:', error);
+            ErrorHandler.handleApiError(error, `API request ${endpoint}`);
             throw error;
+        } finally {
+            this.requestQueue.delete(requestId);
+            this.updateLoadingState();
         }
     }
 
-    // 认证相关
-    async login(credentials) {
-        return this.request('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify(credentials)
-        });
-    }
-
-    async register(userData) {
-        return this.request('/auth/register', {
-            method: 'POST',
-            body: JSON.stringify(userData)
-        });
-    }
-
-    async logout() {
-        localStorage.removeItem('token');
-    }
-
-    // 服务器相关
-    async getServers() {
-        return this.request('/servers');
-    }
-
-    async createServer(serverData) {
-        return this.request('/servers', {
-            method: 'POST',
-            body: JSON.stringify(serverData)
-        });
-    }
-
-    async updateServer(serverId, serverData) {
-        return this.request(`/servers/${serverId}`, {
-            method: 'PUT',
-            body: JSON.stringify(serverData)
-        });
-    }
-
-    async deleteServer(serverId) {
-        return this.request(`/servers/${serverId}`, {
-            method: 'DELETE'
-        });
+    #getDefaultErrorMessage(status) {
+        const errorMessages = {
+            400: 'Bad Request',
+            401: 'Unauthorized, please login again',
+            403: 'Forbidden',
+            404: 'Resource not found',
+            500: 'Internal Server Error',
+            503: 'Service Unavailable'
+        };
+        return errorMessages[status] || '请求失败，请稍后重试';
     }
 }
-
-export const apiService = new ApiService();
+export const apiService = ApiService.getInstance();

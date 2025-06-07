@@ -1,132 +1,97 @@
-/* filepath: /home/flowerrealm/GameConnecting/frontend/src/css/style.css */
+/* 主样式文件 */
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* 导入基础样式 */
+@import url('./base/reset.css');
+@import url('./base/utilities.css');
+
+/* 导入布局 */
+@import url('./layout/container.css');
+
+/* 导入组件样式 */
+@import url('./components/navbar.css');
+@import url('./components/buttons.css');
+@import url('./components/modal.css');
+@import url('./components/form.css');
+@import url('./components/notifications.css');
+@import url('./components/servers.css');
+/* 新增服务器组件样式 */
+
+/* 导入页面特定样式 */
+@import url('./pages/admin.css');
+@import url('./pages/chat.css');
+@import url('./pages/servers.css');
+/* 新增服务器页面样式 */
+@import url('./pages/users.css');
+/* 新增用户列表页面样式 */
+@import url('./pages/lists.css');
+
+/* 通用容器样式 - 基于导航栏风格 */
+.glassmorphic-container {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    /* 导航栏圆角 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    /* 导航栏阴影 */
 }
 
-body {
-    font-family: system-ui, -apple-system, sans-serif;
-    background: url('/images/Background.webp') no-repeat center center fixed;
-    background-size: cover;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+:root {
+    /* 主要颜色 */
+    --primary-color: #4CAF50;
+    --primary-color-rgb: 76, 175, 80;
+    --primary-hover: #45a049;
+
+    /* 背景和表面颜色 */
+    --background-color: #f5f7fa;
+    --surface-color: #ffffff;
+
+    /* 文本颜色 */
+    --text-color: #333333;
+    --text-light: #666666;
+
+    /* 边框和阴影 */
+    --border-color: rgba(0, 0, 0, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.05);
+
+    /* 布局 */
+    --navbar-top-offset: 20px;
+    /* 导航栏顶部偏移量 */
+    --navbar-height: 60px;
+
+    /* 错误颜色 */
+    --error-color: #ff4444;
+    --error-hover: #ff3333;
+
+    /* 成功颜色 */
+    --success-color: #28a745;
+    --success-hover: #218838;
+
+    /* 次要按钮颜色 */
+    --secondary-color: #2196F3;
+    --secondary-hover: #1976D2;
+
+    /* 危险按钮颜色 */
+    --danger-color: #f44336;
+    --danger-hover: #d32f2f;
 }
 
-.navbar {
-    background: rgba(0, 0, 0, 0.8);
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
 
-.navbar-brand {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #fff;
-    text-decoration: none;
-}
-
-.navbar-auth {
-    display: flex;
-    gap: 1rem;
-}
-
-.auth-button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
+::-webkit-scrollbar-track {
     background: transparent;
-    color: white;
-    cursor: pointer;
-    text-decoration: none;
 }
 
-.auth-button.primary {
-    background: #4CAF50;
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
 }
 
-.auth-button:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.auth-button.primary:hover {
-    background: #45a049;
-}
-
-.container {
-    flex: 1;
-    display: flex;
-    padding-top: 60px;
-    /* 为顶栏留出空间 */
-}
-
-.game-container {
-    flex: 1;
-    position: relative;
-}
-
-#gameCanvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-/* 用户下拉菜单样式 */
-.dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    background: rgba(0, 0, 0, 0.9);
-    min-width: 160px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    z-index: 1;
-    border-radius: 4px;
-}
-
-.dropdown-content a {
-    color: #fff;
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-}
-
-.dropdown-content a:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.show {
-    display: block;
-}
-
-/* 用户头像样式 */
-.user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #4CAF50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-.user-avatar:hover {
-    background: #45a049;
+/* 全局平滑滚动 */
+html {
+    scroll-behavior: smooth;
 }

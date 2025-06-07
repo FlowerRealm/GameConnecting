@@ -1,3 +1,10 @@
+/*
+ * @Author: FlowerRealm admin@flowerrealm.top
+ * @Date: 2025-05-31 09:54:18
+ * @LastEditors: FlowerRealm admin@flowerrealm.top
+ * @LastEditTime: 2025-06-07 10:46:36
+ * @FilePath: /GameConnecting/frontend/webServer.js
+ */
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -35,15 +42,33 @@ app.get('/health', (req, res) => {
 
 // 路由处理
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'index.html'));
 });
 
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'login.html'));
 });
 
 app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, 'register.html'));
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'register.html'));
+});
+
+app.get('/chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'chat.html'));
+});
+
+app.get('/servers', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'servers.html'));
+});
+
+// 将 /friends 路由更改为 /users 以提供用户列表页面
+// 该页面 (friends.html) 的内容和JS (friends.js) 已被修改为显示用户列表
+app.get('/users', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'friends.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'admin.html'));
 });
 
 // 错误处理中间件

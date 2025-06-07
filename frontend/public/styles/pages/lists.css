@@ -1,0 +1,41 @@
+/* styles/pages/lists.css */
+
+/* Styling for server list items */
+.server-list .server-item .server-header,
+.server-item .server-header {
+    /* Ensure this applies if .server-list is not always the parent */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.server-item .server-header h3 {
+    margin: 0;
+    font-size: 1.1em;
+    color: var(--text-color);
+    flex-grow: 1;
+    /* Allow h3 to take available space */
+}
+
+.server-stats {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    /* Space between count and suffix text */
+    font-size: 0.9em;
+    color: var(--text-light);
+    white-space: nowrap;
+    /* Prevent wrapping */
+}
+
+.server-stats .member-count {
+    display: flex;
+    align-items: center;
+}
+
+.server-stats .member-count .fas {
+    margin-right: 4px;
+    /* Space between icon and number */
+}

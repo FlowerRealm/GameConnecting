@@ -1,0 +1,1187 @@
+/* 聊天布局 */
+.chat-layout {
+    position: fixed;
+    top: calc(var(--navbar-height) + 1rem);
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1rem;
+    max-width: 1800px;
+    margin: 0 auto;
+    background: var(--surface-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+/* 服务器侧边栏 */
+.servers-sidebar {
+    background: rgba(255, 255, 255, 0.98);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+    height: 100%;
+}
+
+.servers-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface-color);
+}
+
+.server-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.chat-body {
+    display: grid;
+    /* Layout for messages and right sidebar */
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.chat-main {
+    background: var(--surface-color);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    /* Ensure chat-main takes full height within chat-layout */
+}
+
+/* 消息区域样式 */
+.chat-messages {
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: #f5f5f5;
+}
+
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 65%;
+    position: relative;
+    align-self: flex-start;
+    animation: messageAppear 0.3s ease-out;
+    margin: 0.25rem 0;
+}
+
+.message-inner {
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border-radius: 4px 12px 12px 12px;
+    box-shadow: 0 1px 2px var(--shadow-color);
+    position: relative;
+    line-height: 1.4;
+}
+
+.message.self {
+    align-self: flex-end;
+}
+
+.message.self .message-inner {
+    background: #95ec69;
+    border-radius: 12px;
+    border-top-right-radius: 2px;
+}
+
+.message.system-message {
+    text-align: center;
+    /* 文本居中 */
+    font-size: 0.85em;
+    /* 字体稍小一些 */
+    color: #6c757d;
+    /* 使用柔和的灰色字体，不那么突出 */
+    padding: 6px 12px;
+    /* 调整内边距 */
+    margin: 8px auto;
+    /* 上下边距，左右自动以实现居中 */
+    background-color: #f8f9fa;
+    /* 非常浅的背景色 */
+    border-radius: 4px;
+    /* 可选：轻微的圆角 */
+    width: fit-content;
+    /* 使消息框宽度自适应内容 */
+    max-width: 90%;
+    /* 但不要太宽，保持可读性 */
+    box-shadow: none;
+    /* 移除普通消息可能有的阴影 */
+    border: none;
+    /* 移除普通消息可能有的边框 */
+    line-height: 1.4;
+    /* 调整行高 */
+    align-self: center;
+    /* 如果其父元素是flex容器，此属性可帮助垂直或交叉轴对齐 */
+}
+
+/* 隐藏系统消息中的用户名和时间元素 */
+.message.system-message .username,
+.message.system-message .time {
+    display: none;
+}
+
+/* 确保系统消息内的 .content 元素没有额外的边距或填充影响布局 */
+.message.system-message .content {
+    margin: 0;
+    padding: 0;
+    display: inline;
+    /* 确保内容不会强制换行，除非必要 */
+}
+
+.username {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 0.25rem;
+}
+
+.message.self .username {
+    text-align: right;
+}
+
+.time {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+    opacity: 0.8;
+}
+
+.message.self .time {
+    text-align: right;
+}
+
+/* 输入区域 */
+.chat-input-area {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.message-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    resize: none;
+    background: rgba(255, 255, 255, 0.7);
+    font-family: inherit;
+    line-height: 1.5;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.message-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+/* 服务器列表项目样式 */
+.server-item {
+    padding: 0.5rem 1rem;
+    /* 调整内边距 */
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 4px;
+    position: relative;
+    margin: 0 0.5rem;
+    display: flex;
+    /* 使用 flexbox 布局 */
+    justify-content: space-between;
+    /* 名称和人数靠两端对齐 */
+    align-items: center;
+}
+
+.server-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.server-item.active {
+    background: var(--primary-color);
+    color: white;
+    margin: 0;
+    border-radius: 0;
+}
+
+.server-item .server-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    /* 移除其他样式 */
+}
+
+.server-item .member-count {
+    font-size: 0.9rem;
+    /* 调整字体大小 */
+    color: var(--text-light);
+    /* 移除其他样式 */
+}
+
+.server-item.active .member-count {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 隐藏不需要在列表视图中显示的元素 */
+.server-description,
+.server-meta,
+.server-actions {
+    display: none;
+}
+
+/* 按钮样式调整 */
+.add-server-button {
+    padding: 0.25rem 0.5rem;
+    /* 减小内边距 */
+    width: auto;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-color);
+    border: 1px dashed var(--border-color);
+    font-size: 1rem;
+    /* 调整字体大小以匹配图标 */
+}
+
+.add-server-button i {
+    margin: 0;
+    /* 移除图标的外部间距 */
+}
+
+.add-server-button:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* 服务器头部样式 */
+.chat-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface-color);
+    box-shadow: 0 1px 2px var(--shadow-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    /* For potential dropdowns or absolutely positioned elements */
+}
+
+.chat-header .server-info {
+    /* Container for server name and status */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Center server name and status */
+    text-align: center;
+    overflow: hidden;
+    /* Prevent long names from breaking layout */
+    margin: 0 0.5rem;
+    /* Space between nav buttons and info */
+}
+
+.chat-header .server-info h2 {
+    /* Specifically target h2 within .server-info */
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 140px);
+    /* Adjust based on icon button widths */
+}
+
+.chat-header .server-status-display {
+    /* Styles for the server status line in chat header */
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.chat-header .server-status-display .server-status .fas {
+    margin-right: 4px;
+}
+
+#memberCount {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+/* 成员列表样式 */
+.member-list {
+    width: 240px;
+    border-left: 1px solid var(--border-color);
+    background: var(--surface-color);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.member-list-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 500;
+    color: var(--text-color);
+    background: var(--surface-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.members-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.member-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-name {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--text-color);
+}
+
+.member-status {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.member-role {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+/* 成员/申请列表侧边栏 */
+.member-request-sidebar {
+    width: 240px;
+    /* 与服务器列表侧边栏宽度一致 */
+    border-left: 1px solid var(--border-color);
+    background: var(--surface-color);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-light);
+    transition: color 0.2s, background-color 0.2s, opacity 0.2s;
+    /* Added opacity transition */
+    background-color: transparent;
+    /* Default to transparent background */
+    /* 确保文字不会因为继承或其他规则而变得不可见 */
+    text-indent: 0;
+    /* 重置可能存在的文本缩进 */
+    opacity: 1;
+    /* 确保文字不是透明的 */
+    visibility: visible;
+    /* 确保文字是可见的 */
+    font-size: inherit;
+    /* 确保字体大小不是0，或者设置为一个明确的值如 1rem */
+}
+
+.tab-button:hover {
+    /* background-color: rgba(0, 0, 0, 0.05); */
+    /* Subtle hover effect like navbar items */
+    color: var(--text-color);
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.sidebar-tabs .tab-button .fas {
+    margin-right: 5px;
+    /* Ensure icon color contrasts with any potential background or inherits button color */
+    /* color: inherit; */
+    /* Uncomment if icons should match button text color */
+}
+
+/* 特别针对 “加入申请” 按钮，确保其文字可见 */
+.sidebar-tabs .tab-button[data-tab="requests"] {
+    /* If a specific green background was applied here, override or remove it. */
+    /* Example: background-color: transparent !important; */
+    /* Ensure text color is visible against any background */
+    color: var(--text-color) !important;
+    /* 明确设置一个可见的文字颜色，例如深色, 使用 !important 提高优先级 */
+    /* 或者 color: #FFFFFF; 如果背景是深色 */
+    opacity: 1 !important;
+    /* 再次确保不透明 */
+    visibility: visible !important;
+    /* 再次确保可见 */
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    /* 用于绝对定位列表项 */
+}
+
+.members-container,
+.requests-container {
+    padding: 1rem;
+    display: none;
+    /* 默认隐藏，通过JS控制显示 */
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.members-container.active,
+.requests-container.active {
+    display: flex;
+}
+
+/* 加入申请列表项样式 */
+.join-request-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    justify-content: space-between;
+}
+
+.request-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.requester-name {
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.request-time {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.request-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.approve-button,
+.reject-button {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    position: relative;
+    /* Ensure z-index works as expected */
+    background: transparent;
+}
+
+.approve-button::before,
+.reject-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    /* Make pseudo-element background explicitly behind */
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.approve-button {
+    color: var(--primary-color);
+    /* 默认文字颜色为绿色 */
+    border-color: var(--primary-color);
+}
+
+.approve-button::before {
+    background-color: transparent;
+    /* 默认背景透明 */
+}
+
+.approve-button:hover::before {
+    background-color: var(--primary-hover);
+}
+
+.approve-button:hover {
+    color: white;
+    /* 悬停时文字颜色变为白色 */
+}
+
+.reject-button {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.reject-button::before {
+    background-color: transparent;
+}
+
+.reject-button:hover::before {
+    background-color: rgba(var(--danger-color-rgb), 0.1);
+}
+
+/* 遮罩层 */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.mobile-overlay.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* 移动端导航按钮 */
+.mobile-nav-button {
+    display: none;
+    /* Hidden on desktop by default */
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    /* Make icons a bit larger */
+    line-height: 1;
+    /* Ensure consistent button height */
+}
+
+.mobile-nav-button:hover {
+    color: var(--primary-color);
+}
+
+@media screen and (max-width: 768px) {
+    .mobile-nav-button {
+        display: flex;
+        /* Show on mobile */
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .chat-layout {
+        grid-template-columns: 1fr;
+        /* Chat main takes full width */
+        top: var(--navbar-height);
+        /* Align below navbar */
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .servers-sidebar {
+        /* Existing mobile styles are mostly fine */
+        top: var(--navbar-height);
+        /* Ensure consistent alignment */
+        z-index: 1001;
+        /* Above other elements like right sidebar or overlay */
+    }
+
+    .chat-header {
+        padding: 0.75rem 1rem;
+        /* Adjust padding for mobile */
+    }
+
+    .chat-header .server-info h2 {
+        font-size: 1rem;
+        /* Smaller font for server name on mobile */
+    }
+
+    .chat-header .server-status-display {
+        font-size: 0.8em;
+        /* Smaller font for status on mobile */
+    }
+
+    .chat-body {
+        /* On mobile, chat messages take full width.
+           The member-request-sidebar becomes position:fixed.
+           The inline style from JS (chatBody.style.gridTemplateColumns) might override this.
+           Using !important here is a way to ensure CSS wins for mobile view.
+           A better long-term solution is to make the JS mobile-aware. */
+        grid-template-columns: 1fr !important;
+    }
+
+    .member-request-sidebar {
+        position: fixed;
+        right: 0;
+        top: var(--navbar-height);
+        bottom: 0;
+        width: 260px;
+        /* Or 80vw for more flexibility */
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1000;
+        /* Below server-sidebar if both could open, above overlay */
+        background: var(--surface-color);
+        /* Ensure background */
+        border-left: 1px solid var(--border-color);
+        /* Visual separation */
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+        /* Add shadow for depth */
+    }
+
+    .member-request-sidebar.active {
+        transform: translateX(0);
+    }
+
+    .mobile-overlay {
+        z-index: 999;
+        /* Below sidebars */
+    }
+
+}
+
+/* 下拉菜单样式 */
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    padding: 0.5rem 0;
+    min-width: 160px;
+    z-index: 1000;
+    display: none;
+}
+
+.dropdown-menu.active {
+    display: block;
+    animation: dropdownAppear 0.2s ease-out;
+}
+
+@keyframes dropdownAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dropdown-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--primary-color);
+}
+
+/* 交互动画效果 */
+@keyframes messageAppear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.send-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    background: var(--primary-color);
+    color: white;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.send-button:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.send-button:active {
+    transform: translateY(0);
+}
+
+.unread-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary-color);
+}
+
+/* 空状态样式 */
+.empty-chat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-light);
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-chat-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--border-color);
+}
+
+.empty-chat-text {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-chat-subtext {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+/* 自定义滚动条 */
+.chat-messages::-webkit-scrollbar,
+.server-list::-webkit-scrollbar,
+.members-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-track,
+.server-list::-webkit-scrollbar-track,
+.members-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.server-list::-webkit-scrollbar-thumb,
+.members-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.server-list::-webkit-scrollbar-thumb:hover,
+.members-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* 平滑滚动 */
+.chat-messages,
+.server-list,
+.members-container {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+    .chat-layout {
+        left: 0;
+        right: 0;
+        /* These are now covered above, but ensure no conflict */
+        bottom: 0;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .chat-main {
+        /* Ensure chat-main itself fills the viewport height correctly */
+        height: calc(100vh - var(--navbar-height));
+    }
+
+    .servers-sidebar {
+        position: fixed;
+        left: 0;
+        top: var(--navbar-height);
+        bottom: 0;
+        width: 280px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        /* z-index is now 1001 from above */
+    }
+
+    .servers-sidebar.active {
+        transform: translateX(0);
+    }
+
+    .member-list {
+        /* This is the OLD .member-list. If it's still used, its z-index might need review.
+           The new .member-request-sidebar has its own mobile styles now. */
+        position: fixed;
+        right: 0;
+        top: var(--navbar-height);
+        bottom: 0;
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1000;
+        /* Same as .member-request-sidebar, ensure only one is active or manage z-index via JS */
+    }
+
+    .member-list.active {
+        transform: translateX(0);
+    }
+
+    .chat-input-area {
+        padding: 0.5rem;
+        /* Further reduced padding */
+    }
+
+    .message-input {
+        font-size: 16px;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .send-button {
+        padding: 0.5rem 1rem;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    .server-item {
+        padding: 0.75rem;
+    }
+
+    .member-item {
+        padding: 0.5rem;
+    }
+}
+
+/* 聊天页面容器 */
+.chat-container {
+    /* 与其他页面容器统一的外边距和内边距 */
+    margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 20px);
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-bottom: 20px;
+    padding: 20px;
+    width: auto;
+    /* 由外边距决定宽度 */
+    box-sizing: border-box;
+    /* padding 和 border 计算在width/height内 */
+
+    height: calc(100vh - var(--navbar-top-offset) - var(--navbar-height) - 40px);
+    /* 容器高度，填充视口剩余空间 */
+    /* 占满剩余视口高度 */
+    display: flex;
+    flex-direction: column;
+}
+
+/* 主聊天区域 */
+.chat-main {
+    flex-grow: 1;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    /* header, body, input */
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    /* 防止内容溢出圆角 */
+    background: var(--surface-color);
+}
+
+/* 聊天头部 */
+.chat-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--background-color);
+    /* 头部背景 */
+}
+
+.chat-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: var(--text-color);
+}
+
+.chat-header .server-status {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.chat-header .server-status .fas {
+    color: var(--primary-color);
+}
+
+/* 聊天主体 (消息区域 + 侧边栏) */
+.chat-body {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    /* 聊天区域 + 侧边栏 */
+    height: 100%;
+    /* 占满父容器剩余高度 */
+}
+
+/* 聊天消息框 */
+.chat-box {
+    padding: 1.5rem;
+    overflow-y: auto;
+    /* 允许滚动 */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* 单条消息样式 */
+.message {
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    word-break: break-word;
+    /* 长单词换行 */
+}
+
+.message .username {
+    font-weight: bold;
+    margin-right: 0.5rem;
+    color: var(--primary-color);
+}
+
+.message .time {
+    font-size: 0.8em;
+    color: var(--text-light);
+}
+
+.message .content {
+    margin-top: 0.5rem;
+    color: var(--text-color);
+}
+
+/* 系统消息样式 */
+.system-message {
+    text-align: center;
+    font-style: italic;
+    color: var(--text-light);
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    max-width: 100%;
+    /* 系统消息可以占满宽度 */
+}
+
+.system-message .username,
+.system-message .time {
+    display: none;
+    /* 系统消息不显示用户名和时间 */
+}
+
+/* 侧边栏 (成员列表/申请列表) */
+.member-request-sidebar {
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-tabs .tab-button {
+    flex-grow: 1;
+    text-align: center;
+    padding: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: color 0.2s, border-bottom-color 0.2s;
+    border-bottom: 2px solid transparent;
+}
+
+.sidebar-tabs .tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 500;
+}
+
+.sidebar-tabs .tab-button:hover:not(.active) {
+    color: var(--text-color);
+}
+
+.sidebar-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    /* 允许滚动 */
+    padding: 1rem;
+}
+
+/* 聊天输入区域 */
+.chat-input {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: flex-end;
+    /* 使按钮与文本框底部对齐 */
+    gap: 1rem;
+    background: var(--background-color);
+    /* 输入区域背景 */
+}
+
+.chat-input textarea {
+    flex-grow: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-family: inherit;
+    resize: none;
+    /* 禁止手动调整大小 */
+    min-height: 40px;
+    /* 最小高度 */
+    max-height: 150px;
+    /* 最大高度 */
+    overflow-y: auto;
+    /* 需要时显示滚动条 */
+}
+
+.chat-input button {
+    padding: 0.75rem 1.5rem;
+    /* 按钮样式继承自 components/buttons.css */
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+    .chat-container {
+        /* 移动端保持与桌面端一致的padding和height计算，或按需调整 */
+        padding: 20px;
+        /* 如果需要不同的移动端padding，请修改此值 */
+        height: calc(100vh - var(--navbar-top-offset) - var(--navbar-height) - 40px);
+    }
+
+    .chat-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .chat-body {
+        grid-template-columns: 1fr;
+        /* 在小屏幕上侧边栏堆叠 */
+        grid-template-rows: 1fr auto;
+        /* 消息区域在上，侧边栏在下 */
+    }
+
+    .member-request-sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .chat-input {
+        padding: 1rem;
+    }
+}

@@ -1,0 +1,51 @@
+/* styles/components/notifications.css */
+.notification-container {
+    position: fixed;
+    top: calc(var(--navbar-height) + 1rem);
+    /* 导航栏下方，留出一些间距 */
+    right: 1rem;
+    z-index: 1050;
+    /* 确保在大多数内容之上 */
+    width: 300px;
+    /* 或者根据需要调整宽度 */
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.notification-item {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    color: #fff;
+    opacity: 0.95;
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    transform: translateX(0);
+    margin-bottom: 0.5rem;
+    /* 确保与gap效果一致或替代gap */
+}
+
+.notification-item.success {
+    background-color: var(--success-color);
+}
+
+.notification-item.error {
+    background-color: var(--error-color);
+}
+
+.notification-item.warning {
+    background-color: #ffc107;
+    /* 示例警告颜色 */
+    color: #333;
+}
+
+.notification-item.info {
+    background-color: var(--secondary-color);
+    /* 示例信息颜色 */
+}
+
+.notification-item.fade-out {
+    opacity: 0;
+    transform: translateX(100%);
+    /* 移除时向右滑出 */
+}

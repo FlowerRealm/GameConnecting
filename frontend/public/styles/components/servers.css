@@ -1,0 +1,214 @@
+.server-list {
+    width: 100%;
+    box-sizing: border-box;
+    clear: both;
+    flex-basis: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+.servers-page-container {
+    /* 视觉样式 (背景, 毛玻璃, 边框, 圆角, 阴影) */
+    /* 现在完全期望由 style.css 中的 .glassmorphic-container 类提供 */
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    margin-top: calc(var(--navbar-height) + 1.5rem);
+    margin-left: 1.5rem;
+    margin-right: 1.5rem;
+    /* 若需居中和大屏最大宽度限制:
+    /* max-width: 1600px; */
+    /* margin: calc(var(--navbar-height) + 1.5rem) auto 1.5rem; */
+}
+
+.server-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    display: flex;
+    max-height: 150px;
+    /* 注意：固定高度，内容可能溢出 */
+    overflow: hidden;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.server-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.server-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.server-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.server-stats {
+    display: flex;
+    align-items: center;
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.server-stats .fas {
+    margin-right: 0.3rem;
+    color: var(--primary-color);
+}
+
+.server-stats .member-count {
+    font-weight: bold;
+    margin-right: 0.2rem;
+}
+
+.server-stats .member-count-suffix {
+    white-space: nowrap;
+}
+
+.sidebar-content {
+    margin-top: 1rem;
+}
+
+.sidebar-content>div {
+    display: none;
+}
+
+.sidebar-content>div.active {
+    display: block;
+}
+
+.member-item,
+.join-request-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.member-item:last-child,
+.join-request-item:last-child {
+    border-bottom: none;
+}
+
+.member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    margin-right: 1rem;
+}
+
+.member-info,
+.request-info {
+    flex-grow: 1;
+}
+
+.member-name,
+.requester-name {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.member-role,
+.request-time {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    display: block;
+}
+
+.member-actions,
+.request-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.servers-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1.5rem;
+}
+
+
+.member-action-button,
+.approve-button,
+.reject-button {
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.member-action-button {
+    background: var(--danger-color);
+    color: white;
+    border: 1px solid var(--danger-color);
+}
+
+.member-action-button:hover {
+    background: var(--danger-hover);
+}
+
+.approve-button {
+    background: var(--primary-color);
+    color: white;
+    border: 1px solid var(--primary-color);
+}
+
+.approve-button:hover {
+    background: var(--primary-hover);
+}
+
+.reject-button {
+    background: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.reject-button:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+#noServerSelected {
+    display: none;
+    /* JS控制显示 */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-light);
+    text-align: center;
+}
+
+#noServerSelected i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+#noServerSelected p {
+    font-size: 1.2rem;
+}

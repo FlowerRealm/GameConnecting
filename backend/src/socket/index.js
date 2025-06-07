@@ -1,23 +1,26 @@
-import { Server } from 'socket.io';
+import { Server as SocketServer } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import User from '../db/models/user.js';
+import { db } from '../db/index.js';
+import { getSocketConfig, getAuthConfig } from '../config/index.js';
+const onlineUsers = new Map();
+const activeServers = new Map();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // 从环境变量获取密钥
+let ioInstance = null;
 
 export const initSocket = (httpServer) => {
-    const io = new Server(httpServer, {
-        cors: {
-            origin: ["https://game.flowerrealm.top", "http://localhost:3000"],
-            methods: ["GET", "POST"],
-            credentials: true,
-            allowedHeaders: ["Authorization", "X-API-Key"]
-        },
-        transports: ['websocket'],
-        pingTimeout: 60000,
-        pingInterval: 25000
+    const socketConfig = getSocketConfig();
+    const authConfig = getAuthConfig();
+
+    const io = new SocketServer(httpServer, {
+        cors: socketConfig.cors,
+        allowEIO3: true,
+        transports: ['polling', 'websocket'],
+        pingTimeout: socketConfig.pingTimeout,
+        pingInterval: socketConfig.pingInterval
     });
 
-    // 身份验证中间件
+    ioInstance = io;
+
     io.use(async (socket, next) => {
         try {
             const token = socket.handshake.auth.token;
@@ -25,8 +28,8 @@ export const initSocket = (httpServer) => {
                 return next(new Error('需要认证'));
             }
 
-            const decoded = jwt.verify(token, JWT_SECRET);
-            const user = await User.findByPk(decoded.userId);
+            const decoded = jwt.verify(token, authConfig.jwtSecret);
+            const user = await db.User.findByPk(decoded.userId);
 
             if (!user) {
                 return next(new Error('用户不存在'));
@@ -34,7 +37,8 @@ export const initSocket = (httpServer) => {
 
             socket.user = {
                 id: user.id,
-                username: user.username
+                username: user.username,
+                role: user.role
             };
             next();
         } catch (error) {
@@ -43,112 +47,143 @@ export const initSocket = (httpServer) => {
         }
     });
 
-    const rooms = new Map();
-
     io.on('connection', (socket) => {
-        console.log(`用户 ${socket.user.username} 已连接`);
+        console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) connected.`);
+        if (!onlineUsers.has(socket.user.id)) {
+            onlineUsers.set(socket.user.id, new Set());
+        }
+        onlineUsers.get(socket.user.id).add(socket.id);
 
-        // 加入游戏房间
-        socket.on('joinRoom', async (roomId) => { // 添加 async
+        if (socket.user.role === 'admin') {
+            socket.join('admin_room');
+            console.log(`Socket: Admin ${socket.user.username} joined admin_room.`);
+        }
+
+        socket.on('joinServer', async (serverId) => {
             try {
-                // 可以在这里添加房间存在的验证，或者其他加入房间的逻辑
-                if (!rooms.has(roomId)) {
-                    rooms.set(roomId, { players: new Set() });
-                }
-                const room = rooms.get(roomId);
-                room.players.add(socket.user.id);
+                const serverData = await db.Server.findByPk(serverId, {
+                    include: [{
+                        model: db.User,
+                        as: 'members',
+                        through: { where: { UserId: socket.user.id } }
+                    }]
+                });
 
-                socket.join(roomId);
-                io.to(roomId).emit('playerJoined', {
+                if (!serverData || !serverData.members.length) {
+                    throw new Error('您不是该服务器的成员');
+                }
+                if (!activeServers.has(String(serverId))) {
+                    activeServers.set(serverId, {
+                        members: new Set(),
+                        lastActivity: new Date()
+                    });
+                }
+                const server = activeServers.get(String(serverId));
+                server.members.add(String(socket.user.id));
+                server.lastActivity = new Date();
+                socket.join(`server:${serverId}`);
+                io.to(`server:${serverId}`).emit('memberJoined', {
                     userId: socket.user.id,
                     username: socket.user.username,
-                    playerCount: room.players.size
+                    timestamp: new Date(),
+                    onlineCount: server.members.size
                 });
             } catch (error) {
-                console.error(`用户 ${socket.user.username} 加入房间 ${roomId} 失败:`, error.message);
-                socket.emit('error', '加入房间失败');
+                console.error(`用户 ${socket.user.username} 加入服务器 ${serverId} 失败:`, error.message);
+                socket.emit('error', error.message);
             }
         });
 
-        // 离开游戏房间
-        socket.on('leaveRoom', async (roomId) => { // 添加 async
+        socket.on('serverMessage', async (data) => {
             try {
-                if (rooms.has(roomId)) {
-                    const room = rooms.get(roomId);
-                    room.players.delete(socket.user.id);
+                const { serverId, message, type = 'text' } = data;
+                const server = activeServers.get(String(serverId));
+                if (!server || !server.members.has(String(socket.user.id))) {
+                    throw new Error('您不在该服务器中');
+                }
 
-                    if (room.players.size === 0) {
-                        rooms.delete(roomId);
+                // 更新服务器活跃时间
+                server.lastActivity = new Date();
+
+                io.to(`server:${serverId}`).emit('message', {
+                    type,
+                    userId: socket.user.id,
+                    username: socket.user.username,
+                    message,
+                    timestamp: new Date()
+                });
+            } catch (error) {
+                console.error(`用户 ${socket.user.username} 在服务器 ${data.serverId} 发送消息失败:`, error.message);
+                socket.emit('error', error.message);
+            }
+        });
+
+        socket.on('leaveServer', async (serverId) => {
+            try {
+                const server = activeServers.get(String(serverId));
+                if (server && server.members.has(String(socket.user.id))) {
+                    server.members.delete(String(socket.user.id));
+                    socket.leave(`server:${serverId}`);
+                    if (server.members.size === 0) {
+                        activeServers.delete(String(serverId));
                     }
-
-                    socket.leave(roomId);
-                    io.to(roomId).emit('playerLeft', {
+                    io.to(`server:${serverId}`).emit('memberLeft', {
                         userId: socket.user.id,
                         username: socket.user.username,
-                        playerCount: room.players.size
+                        timestamp: new Date(),
+                        onlineCount: server.members.size
                     });
                 }
             } catch (error) {
-                console.error(`用户 ${socket.user.username} 离开房间 ${roomId} 失败:`, error.message);
-                socket.emit('error', '离开房间失败');
+                console.error(`用户 ${socket.user.username} 离开服务器 ${serverId} 失败:`, error.message);
+                socket.emit('error', error.message);
             }
         });
 
-        // 游戏动作
-        socket.on('gameAction', async (data) => { // 添加 async
-            try {
-                const { roomId, action, position } = data;
-                if (rooms.has(roomId)) {
-                    // 可以在这里添加游戏逻辑验证
-                    io.to(roomId).emit('gameUpdate', {
-                        userId: socket.user.id,
-                        username: socket.user.username,
-                        action,
-                        position
-                    });
-                }
-            } catch (error) {
-                console.error(`用户 ${socket.user.username} 在房间 ${data.roomId} 执行游戏动作失败:`, error.message);
-                socket.emit('error', '游戏动作失败');
-            }
-        });
-
-        // 聊天消息
-        socket.on('chatMessage', async (data) => { // 添加 async
-            try {
-                const { roomId, message } = data;
-                if (rooms.has(roomId)) {
-                    io.to(roomId).emit('message', {
-                        userId: socket.user.id,
-                        username: socket.user.username,
-                        message,
-                        timestamp: new Date()
-                    });
-                }
-            } catch (error) {
-                console.error(`用户 ${socket.user.username} 在房间 ${data.roomId} 发送聊天消息失败:`, error.message);
-                socket.emit('error', '发送消息失败');
-            }
-        });
-
-        // 断开连接
         socket.on('disconnect', () => {
-            console.log(`用户 ${socket.user.username} 已断开连接`);
-            rooms.forEach((room, roomId) => {
-                if (room.players.has(socket.user.id)) {
-                    room.players.delete(socket.user.id);
-                    if (room.players.size === 0) {
-                        rooms.delete(roomId);
+            console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) disconnected.`);
+            const userSockets = onlineUsers.get(socket.user.id);
+            if (userSockets) {
+                userSockets.delete(socket.id);
+                if (userSockets.size === 0) {
+                    onlineUsers.delete(socket.user.id);
+                }
+            }
+
+            activeServers.forEach((server, serverId) => {
+                if (server.members.has(String(socket.user.id))) {
+                    server.members.delete(String(socket.user.id));
+                    if (server.members.size === 0) {
+                        activeServers.delete(String(serverId));
+                    } else {
+                        io.to(`server:${serverId}`).emit('memberLeft', {
+                            userId: socket.user.id,
+                            username: socket.user.username,
+                            timestamp: new Date(),
+                            onlineCount: server.members.size
+                        });
                     }
-                    io.to(roomId).emit('playerLeft', {
-                        userId: socket.user.id,
-                        username: socket.user.username,
-                        playerCount: room.players.size
-                    });
                 }
             });
         });
     });
 
     return io;
+};
+
+export const getIoInstance = () => {
+    if (!ioInstance) {
+        throw new Error("Socket.IO has not been initialized.");
+    }
+    return ioInstance;
+};
+
+export const getActiveServersInfo = () => {
+    const info = {};
+    activeServers.forEach((data, serverId) => {
+        info[serverId] = {
+            onlineMemberCount: data.members.size
+        };
+    });
+    return info;
 };

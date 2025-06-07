@@ -4,12 +4,11 @@
     "description": "A real-time game server connection platform",
     "private": true,
     "scripts": {
-        "start": "npm run set-prod && concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
+        "prod": "npm run set-prod && concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
         "dev": "npm run set-dev && concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-        "install-deps": "npm install && npm run install-workspaces",
-        "install-workspaces": "npm install -w backend && npm install -w frontend",
-        "set-dev": "cp backend/.env.development backend/.env && cp frontend/.env.development frontend/.env",
-        "set-prod": "cp backend/.env.production backend/.env && cp frontend/.env.production frontend/.env"
+        "install": "npm install && npm install -w backend && npm install -w frontend",
+        "set-dev": "./switch-env.sh 1",
+        "set-prod": "./switch-env.sh 2"
     },
     "workspaces": [
         "backend",
