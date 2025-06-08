@@ -12,20 +12,59 @@
     ],
     "routes": [
         {
-            "src": "/",
-            "dest": "public/pages/index"
+            "src": "/js/(.*)",
+            "dest": "/public/js/$1"
+        },
+        {
+            "src": "/styles/(.*)",
+            "dest": "/public/styles/$1"
+        },
+        {
+            "src": "/images/(.*)",
+            "dest": "/public/images/$1"
         },
         {
             "src": "/socket.io/(.*)",
-            "dest": "webServer.js"
+            "dest": "/webServer.js"
         },
         {
             "src": "/api/(.*)",
-            "dest": "webServer.js"
+            "dest": "/webServer.js"
         },
         {
-            "src": "/(.*)",
-            "dest": "public/pages/$1"
+            "src": "/login",
+            "dest": "/public/pages/login.html"
+        },
+        {
+            "src": "/register",
+            "dest": "/public/pages/register.html"
+        },
+        {
+            "src": "/admin",
+            "dest": "/public/pages/admin.html"
+        },
+        {
+            "src": "/servers",
+            "dest": "/public/pages/servers.html"
+        },
+        {
+            "src": "/friends",
+            "dest": "/public/pages/friends.html"
+        },
+        {
+            "src": "/chat",
+            "dest": "/public/pages/chat.html"
+        },
+        {
+            "src": "/profile",
+            "dest": "/public/pages/profile.html"
+        },
+        {
+            "src": "/",
+            "dest": "/public/pages/index.html"
+        },
+        {
+            "handle": "filesystem"
         }
     ],
     "build": {
