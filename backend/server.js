@@ -1,3 +1,10 @@
+/*
+ * @Author: FlowerRealm admin@flowerrealm.top
+ * @Date: 2025-05-31 09:54:18
+ * @LastEditors: FlowerRealm admin@flowerrealm.top
+ * @LastEditTime: 2025-06-08 08:35:17
+ * @FilePath: /GameConnecting/backend/server.js
+ */
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -66,7 +73,6 @@ initSocket(server);
 
 const port = serverConfig.port;
 server.listen(port, () => {
-    console.log(`服务器运行在 http://localhost:${port}`);
     console.log('环境:', getConfig('env'));
     console.log('前端URL:', serverConfig.frontendUrl);
 });

@@ -1,6 +1,6 @@
 
 export const config = {
-  "isDevelopment": true,
+  "isDevelopment": false,
   "backendUrl": "http://localhost:3001",
   "socketUrl": "ws://localhost:3001",
   "frontendUrl": "http://localhost:3000",

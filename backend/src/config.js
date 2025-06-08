@@ -1,18 +1,18 @@
 export const config = {
-  "env": "development",
-  "isDevelopment": true,
+  "env": "production",
+  "isDevelopment": false,
   "server": {
     "port": 3001,
-    "frontendUrl": "http://localhost:3000",
+    "frontendUrl": "https://game.flowerrealm.top",
     "apiKey": "FlowerRealmGameConnecting"
   },
   "database": {
-    "host": "localhost",
+    "host": "dpg-d0t5hq49c44c73956nd0-a",
     "port": 5432,
     "database": "gameconnecting",
-    "username": "gameconnecting",
-    "password": "your_password",
-    "logging": true,
+    "username": "admin",
+    "password": "s4RmJ4HnXrDGsGVGh0gM7UGMtpDUh8F4",
+    "logging": false,
     "pool": {
       "max": 5,
       "min": 0,
@@ -30,7 +30,7 @@ export const config = {
     "pingInterval": 25000,
     "cors": {
       "origin": [
-        "http://localhost:3000"
+        "https://game.flowerrealm.top"
       ],
       "methods": [
         "GET",
