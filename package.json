@@ -6,7 +6,6 @@
     "scripts": {
         "prod": "npm run set-prod && concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
         "dev": "npm run set-dev && concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-        "install": "npm install && npm install -w backend && npm install -w frontend",
         "set-dev": "./switch-env.sh 1",
         "set-prod": "./switch-env.sh 2"
     },

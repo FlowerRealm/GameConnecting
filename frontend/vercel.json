@@ -13,7 +13,7 @@
     "routes": [
         {
             "src": "/",
-            "dest": "frontend/public/pages/index.html"
+            "dest": "public/pages/index"
         },
         {
             "src": "/socket.io/(.*)",
@@ -25,7 +25,7 @@
         },
         {
             "src": "/(.*)",
-            "dest": "frontend/public/pages/$1"
+            "dest": "public/pages/$1"
         }
     ],
     "build": {
