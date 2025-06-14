@@ -8,9 +8,13 @@ export class ChatManager {
     #messageTemplate;
     #memberTemplate;
     #memberRequestSidebar;
+    #messageHandler;
+    #memberJoinedHandler;
+    #memberLeftHandler;
+    #errorHandler;
 
-    constructor(socket) {
-        this.#socket = socket;
+    constructor(socketManager) {
+        this.#socket = socketManager;
         this.#chatBox = document.getElementById('chatBox');
         this.#messageInput = document.getElementById('messageInput');
         this.#sendButton = document.getElementById('sendButton');
@@ -35,23 +39,47 @@ export class ChatManager {
     }
 
     #setupSocketListeners() {
-        this.#socket.on('message', (data) => {
+        // 先移除可能存在的旧监听器
+        this.#removeSocketListeners();
+        
+        // 保存监听器引用以便后续移除
+        this.#messageHandler = (data) => {
             this.#displayMessage(data);
-        });
-
-        this.#socket.on('memberJoined', (data) => {
+        };
+        
+        this.#memberJoinedHandler = (data) => {
             this.#displaySystemMessage(`${data.username} 加入了服务器`);
             this.#updateMemberCount(data.onlineCount);
-        });
-
-        this.#socket.on('memberLeft', (data) => {
+        };
+        
+        this.#memberLeftHandler = (data) => {
             this.#displaySystemMessage(`${data.username} 离开了服务器`);
             this.#updateMemberCount(data.onlineCount);
-        });
-
-        this.#socket.on('error', (error) => {
+        };
+        
+        this.#errorHandler = (error) => {
             this.#displaySystemMessage(error, 'error');
-        });
+        };
+
+        this.#socket.on('message', this.#messageHandler);
+        this.#socket.on('memberJoined', this.#memberJoinedHandler);
+        this.#socket.on('memberLeft', this.#memberLeftHandler);
+        this.#socket.on('error', this.#errorHandler);
+    }
+    
+    #removeSocketListeners() {
+        if (this.#messageHandler) {
+            this.#socket.off('message', this.#messageHandler);
+        }
+        if (this.#memberJoinedHandler) {
+            this.#socket.off('memberJoined', this.#memberJoinedHandler);
+        }
+        if (this.#memberLeftHandler) {
+            this.#socket.off('memberLeft', this.#memberLeftHandler);
+        }
+        if (this.#errorHandler) {
+            this.#socket.off('error', this.#errorHandler);
+        }
     }
 
     #sendMessage() {
@@ -168,10 +196,7 @@ export class ChatManager {
 
     destroy() {
         this.leaveServer();
-        this.#socket.off('message');
-        this.#socket.off('memberJoined');
-        this.#socket.off('memberLeft');
-        this.#socket.off('error');
+        this.#removeSocketListeners();
     }
 
     getCurrentServerId() {

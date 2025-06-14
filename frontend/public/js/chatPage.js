@@ -4,7 +4,7 @@ import { socketManager } from './socket.js';
 import { ChatManager } from './chat.js';
 import { apiService } from './apiService.js';
 import { store } from './store.js';
-import { initChatSidebar, updateSidebarServerDetails } from './chatSidebar.js';
+// import { initChatSidebar, updateSidebarServerDetails } from './chatSidebar.js';
 
 const auth = AuthManager.getInstance();
 let chatManager;
@@ -15,6 +15,7 @@ if (!auth.isAuthenticated()) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded 事件触发');
     if (!auth.isAuthenticated()) { // Double check, though top-level check might have redirected
         window.location.href = '/login';
         return;
@@ -44,19 +45,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     chatManager.joinServer(serverId);
     document.getElementById('currentServerName').textContent = currentServerDetails.name;
 
-    initChatSidebar(serverId, currentServerDetails, auth);
+    // initChatSidebar(serverId, currentServerDetails, auth);
 
-    document.getElementById('leaveServerButton').addEventListener('click', () => {
-        chatManager.leaveServer();
-        window.location.href = '/servers';
-    });
+    const leaveButton = document.getElementById('leaveServerButton');
+    console.log('离开服务器按钮:', leaveButton);
+    
+    if (leaveButton) {
+        leaveButton.addEventListener('click', async () => {
+            console.log('离开服务器按钮被点击');
+            const serverId = new URLSearchParams(window.location.search).get('serverId');
+            console.log('当前服务器ID:', serverId);
+            
+            if (serverId) {
+                try {
+                    console.log('调用离开服务器API...');
+                    // 调用后端API离开服务器
+                    const response = await apiService.request(`/servers/${serverId}/leave`, {
+                        method: 'POST'
+                    });
+                    
+                    console.log('API响应:', response);
+                    
+                    if (response.success) {
+                        chatManager.leaveServer();
+                        store.addNotification(response.data?.message || '成功离开服务器', 'success');
+                        window.location.href = '/servers';
+                    } else {
+                        store.addNotification(response.message || '离开服务器失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('离开服务器失败:', error);
+                    store.addNotification('离开服务器时出错', 'error');
+                }
+            } else {
+                console.log('没有服务器ID，直接跳转');
+                chatManager.leaveServer();
+                window.location.href = '/servers';
+            }
+        });
+    } else {
+        console.error('找不到离开服务器按钮');
+    }
 });
 
 async function loadServerDetails(serverId) {
     try {
         const response = await apiService.request(`/servers/${serverId}`);
         if (response.success) {
-            updateSidebarServerDetails(response.data);
+            // updateSidebarServerDetails(response.data);
             return response.data;
         } else {
             store.addNotification(`加载服务器详情失败: ${response.message}`, 'error');

@@ -45,7 +45,9 @@ class SocketManager {
             this.reconnectAttempts = 0;
             clearTimeout(this.reconnectTimer);
             // Re-register listeners if any were added before connection
+            // First remove all existing listeners to prevent duplicates
             this.listeners.forEach((callbacks, event) => {
+                this.socket.removeAllListeners(event);
                 callbacks.forEach(callback => this.socket.on(event, callback));
             });
         });
