@@ -221,8 +221,17 @@ async function handleServerSubmit(event) {
 
         if (response.success) {
             closeModal();
-            loadServers();
-            showSuccess(editingServerId ? '服务器更新成功' : '服务器创建成功');
+            if (editingServerId) {
+                loadServers();
+                showSuccess('服务器更新成功');
+            } else {
+                // 创建服务器成功后立即跳转到聊天页面
+                const serverId = response.data.data.id;
+                showSuccess('服务器创建成功，正在进入...');
+                setTimeout(() => {
+                    window.location.href = `/chat?serverId=${serverId}`;
+                }, 1000);
+            }
         } else {
             showError(response.message);
         }

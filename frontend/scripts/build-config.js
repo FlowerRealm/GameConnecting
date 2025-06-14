@@ -6,9 +6,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-
 const env = process.env.NODE_ENV || 'development';
+const envPath = path.resolve(__dirname, `../.env.${env}`);
+dotenv.config({ path: envPath });
 
 // 检查必要的环境变量
 const requiredEnvVars = ['BACKEND_URL', 'SOCKET_URL', 'FRONTEND_URL'];

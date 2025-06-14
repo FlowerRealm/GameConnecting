@@ -40,8 +40,9 @@ const verifyApiKey = (req, res, next) => {
 app.use(cors({
     origin: function (origin, callback) {
         const allowedOrigins = [serverConfig.frontendUrl];
-
-        if (!origin || allowedOrigins.includes(origin)) {
+        
+        // 在开发环境中允许所有来源
+        if (getConfig('isDevelopment') || !origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error('不允许的跨域请求'));
@@ -72,7 +73,8 @@ const server = createServer(app);
 initSocket(server);
 
 const port = serverConfig.port;
-server.listen(port, () => {
+server.listen(port, '0.0.0.0', () => {
     console.log('环境:', getConfig('env'));
     console.log('前端URL:', serverConfig.frontendUrl);
+    console.log(`后端服务器运行在: http://0.0.0.0:${port}`);
 });

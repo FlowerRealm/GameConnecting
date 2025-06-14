@@ -97,6 +97,7 @@ export const initSocket = (httpServer) => {
         socket.on('serverMessage', async (data) => {
             try {
                 const { serverId, message, type = 'text' } = data;
+                
                 const server = activeServers.get(String(serverId));
                 if (!server || !server.members.has(String(socket.user.id))) {
                     throw new Error('您不在该服务器中');
@@ -105,13 +106,15 @@ export const initSocket = (httpServer) => {
                 // 更新服务器活跃时间
                 server.lastActivity = new Date();
 
-                io.to(`server:${serverId}`).emit('message', {
+                const messageData = {
                     type,
                     userId: socket.user.id,
                     username: socket.user.username,
                     message,
                     timestamp: new Date()
-                });
+                };
+                
+                io.to(`server:${serverId}`).emit('message', messageData);
             } catch (error) {
                 console.error(`用户 ${socket.user.username} 在服务器 ${data.serverId} 发送消息失败:`, error.message);
                 socket.emit('error', error.message);
@@ -124,15 +127,19 @@ export const initSocket = (httpServer) => {
                 if (server && server.members.has(String(socket.user.id))) {
                     server.members.delete(String(socket.user.id));
                     socket.leave(`server:${serverId}`);
+                    
                     if (server.members.size === 0) {
                         activeServers.delete(String(serverId));
+                        // 服务器没有在线成员时自动删除
+                        await deleteEmptyServer(serverId);
+                    } else {
+                        io.to(`server:${serverId}`).emit('memberLeft', {
+                            userId: socket.user.id,
+                            username: socket.user.username,
+                            timestamp: new Date(),
+                            onlineCount: server.members.size
+                        });
                     }
-                    io.to(`server:${serverId}`).emit('memberLeft', {
-                        userId: socket.user.id,
-                        username: socket.user.username,
-                        timestamp: new Date(),
-                        onlineCount: server.members.size
-                    });
                 }
             } catch (error) {
                 console.error(`用户 ${socket.user.username} 离开服务器 ${serverId} 失败:`, error.message);
@@ -140,7 +147,7 @@ export const initSocket = (httpServer) => {
             }
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', async () => {
             console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) disconnected.`);
             const userSockets = onlineUsers.get(socket.user.id);
             if (userSockets) {
@@ -150,11 +157,14 @@ export const initSocket = (httpServer) => {
                 }
             }
 
+            // 处理用户离开的服务器
+            const serversToDelete = [];
             activeServers.forEach((server, serverId) => {
                 if (server.members.has(String(socket.user.id))) {
                     server.members.delete(String(socket.user.id));
                     if (server.members.size === 0) {
                         activeServers.delete(String(serverId));
+                        serversToDelete.push(serverId);
                     } else {
                         io.to(`server:${serverId}`).emit('memberLeft', {
                             userId: socket.user.id,
@@ -165,11 +175,45 @@ export const initSocket = (httpServer) => {
                     }
                 }
             });
+
+            // 删除空的服务器
+            for (const serverId of serversToDelete) {
+                await deleteEmptyServer(serverId);
+            }
         });
     });
 
     return io;
 };
+
+// 删除空服务器的函数
+async function deleteEmptyServer(serverId) {
+    try {
+        console.log(`检查服务器 ${serverId} 是否需要删除...`);
+        
+        // 检查数据库中是否还有成员
+        const memberCount = await db.ServerMember.count({
+            where: { ServerId: serverId }
+        });
+        
+        if (memberCount === 0) {
+            // 删除服务器相关数据
+            await db.ServerJoinRequest.destroy({
+                where: { serverId: serverId }
+            });
+            
+            await db.Server.destroy({
+                where: { id: serverId }
+            });
+            
+            console.log(`服务器 ${serverId} 已自动删除（无成员）`);
+        } else {
+            console.log(`服务器 ${serverId} 仍有 ${memberCount} 个成员，不删除`);
+        }
+    } catch (error) {
+        console.error(`删除空服务器 ${serverId} 失败:`, error);
+    }
+}
 
 export const getIoInstance = () => {
     if (!ioInstance) {

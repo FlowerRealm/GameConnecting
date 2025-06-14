@@ -11,7 +11,8 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
 // 加载环境变量
-dotenv.config();
+const env = process.env.NODE_ENV || 'development';
+dotenv.config({ path: `.env.${env}` });
 
 // 打印环境信息
 console.log('Server Environment:', {
@@ -78,6 +79,7 @@ app.use((err, req, res, next) => {
 });
 
 // 启动服务器
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Frontend server running in ${process.env.NODE_ENV} mode on port ${port}`);
+    console.log(`前端服务器运行在: http://0.0.0.0:${port}`);
 });

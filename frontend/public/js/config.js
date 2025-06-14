@@ -1,9 +1,9 @@
 
 export const config = {
-  "isDevelopment": false,
-  "backendUrl": "https://gameconnecting.onrender.com",
-  "socketUrl": "wss://gameconnecting.onrender.com",
-  "frontendUrl": "https://game.flowerrealm.top",
+  "isDevelopment": true,
+  "backendUrl": "https://work-2-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
+  "socketUrl": "wss://work-2-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
+  "frontendUrl": "https://work-1-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
   "apiKey": "FlowerRealmGameConnecting",
   "socket": {
     "maxRetryAttempts": 3,
