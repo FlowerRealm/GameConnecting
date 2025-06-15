@@ -3,7 +3,7 @@ export const config = {
   "isDevelopment": true,
   "server": {
     "port": 12001,
-    "frontendUrl": "https://work-1-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
+    "frontendUrl": "http://localhost:12000",
     "apiKey": "FlowerRealmGameConnecting"
   },
   "database": {
@@ -30,7 +30,7 @@ export const config = {
     "pingInterval": 25000,
     "cors": {
       "origin": [
-        "https://work-1-pstntnwvalrqqmrq.prod-runtime.all-hands.dev"
+        "http://localhost:12000"
       ],
       "methods": [
         "GET",

@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 ###
  # @Author: FlowerRealm admin@flowerrealm.top
  # @Date: 2025-06-02 10:00:00

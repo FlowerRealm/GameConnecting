@@ -1,8 +1,8 @@
 
 export const config = {
   "isDevelopment": true,
-  "backendUrl": "https://work-2-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
-  "socketUrl": "wss://work-2-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
+  "backendUrl": "http://localhost:12001",
+  "socketUrl": "ws://localhost:12001",
   "frontendUrl": "https://work-1-pstntnwvalrqqmrq.prod-runtime.all-hands.dev",
   "apiKey": "FlowerRealmGameConnecting",
   "socket": {
