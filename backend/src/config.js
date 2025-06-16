@@ -6,20 +6,9 @@ export const config = {
     "frontendUrl": "http://localhost:12000",
     "apiKey": "FlowerRealmGameConnecting"
   },
-  "database": {
-    "host": "localhost",
-    "port": 5432,
-    "database": "gameconnecting",
-    "username": "gameconnecting",
-    "password": "gameconnecting123",
-    "logging": true,
-    "pool": {
-      "max": 5,
-      "min": 0,
-      "acquire": 30000,
-      "idle": 10000
-    },
-    "retryMax": 3
+  "supabase": {
+    "url": "https://ybdxxwmqqextjxerkaej.supabase.co",
+    "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliZHh4d21xcWV4dGp4ZXJrYWVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NTAyMTAsImV4cCI6MjA2NTUyNjIxMH0.1dL_zuaEooFJeDkEtYoY436CFRmBGdpwRbqNgHz40VI"
   },
   "auth": {
     "jwtSecret": "FlowerRealmGameConnectingJWTSecret_2025",
