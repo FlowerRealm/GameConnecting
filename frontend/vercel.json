@@ -24,12 +24,12 @@
             "dest": "/public/images/$1"
         },
         {
-            "src": "/socket.io/(.*)",
-            "dest": "/webServer.js"
+            "src": "/api/(.*)",
+            "dest": "https://gameconnecting.onrender.com/api/$1"
         },
         {
-            "src": "/api/(.*)",
-            "dest": "/webServer.js"
+            "src": "/socket.io/(.*)",
+            "dest": "https://gameconnecting.onrender.com/socket.io/$1"
         },
         {
             "src": "/login",
