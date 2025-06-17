@@ -10,7 +10,6 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { createServer } from 'http';
 import cors from 'cors';
-import { initDb, sequelize, db } from './src/db/index.js';
 import authRouter from './src/api/auth.js';
 import serversRouter from './src/api/servers.js';
 import adminRouter from './src/api/admin.js';
@@ -21,8 +20,6 @@ import { getConfig, getServerConfig } from './src/config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-await initDb();
 
 const app = express();
 const serverConfig = getServerConfig();
