@@ -1,15 +1,14 @@
 import { Server as SocketServer } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import { db } from '../db/index.js';
-import { getSocketConfig, getAuthConfig } from '../config/index.js';
-const onlineUsers = new Map();
-const activeServers = new Map();
+import { supabase } from '../supabaseClient.js';
+import { getSocketConfig } from '../config/index.js';
+
+const onlineUsers = new Map(); // socket.user.id -> Set of socket.id
+const activeServers = new Map(); // serverId (string) -> { members: Set of user.id (string), lastActivity: Date }
 
 let ioInstance = null;
 
 export const initSocket = (httpServer) => {
     const socketConfig = getSocketConfig();
-    const authConfig = getAuthConfig();
 
     const io = new SocketServer(httpServer, {
         cors: socketConfig.cors,
@@ -25,30 +24,46 @@ export const initSocket = (httpServer) => {
         try {
             const token = socket.handshake.auth.token;
             if (!token) {
-                return next(new Error('需要认证'));
+                return next(new Error('Authentication failed: No token provided'));
             }
 
-            const decoded = jwt.verify(token, authConfig.jwtSecret);
-            const user = await db.User.findByPk(decoded.userId);
+            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
-            if (!user) {
-                return next(new Error('用户不存在'));
+            if (authError || !authUser) {
+                console.error('Socket Auth Error (getUser):', authError?.message || 'No auth user');
+                return next(new Error('Authentication failed: Invalid token'));
             }
 
-            socket.user = {
-                id: user.id,
-                username: user.username,
-                role: user.role
+            const { data: profile, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('id, username, role, status')
+                .eq('id', authUser.id)
+                .single();
+
+            if (profileError || !profile) {
+                console.error('Socket Auth Error (getProfile):', profileError?.message || 'No profile');
+                return next(new Error('Authentication failed: User profile not found'));
+            }
+
+            if (profile.status !== 'active') {
+                console.warn(`Socket Auth: User ${profile.username} status is ${profile.status}, denying connection.`);
+                return next(new Error('Authentication failed: Account not active'));
+            }
+
+            socket.user = { // Store Supabase user profile data
+                id: profile.id, // This is the UUID from user_profiles (which is auth.users.id)
+                username: profile.username,
+                role: profile.role
             };
             next();
         } catch (error) {
-            console.error('Socket 认证失败:', error.message);
-            next(new Error('认证失败'));
+            console.error('Socket Authentication Middleware Unexpected Error:', error.message);
+            next(new Error('Authentication failed: Server error'));
         }
     });
 
     io.on('connection', (socket) => {
-        console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) connected.`);
+        console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) connected with socket ID ${socket.id}.`);
         if (!onlineUsers.has(socket.user.id)) {
             onlineUsers.set(socket.user.id, new Set());
         }
@@ -61,49 +76,57 @@ export const initSocket = (httpServer) => {
 
         socket.on('joinServer', async (serverId) => {
             try {
-                const serverData = await db.Server.findByPk(serverId, {
-                    include: [{
-                        model: db.User,
-                        as: 'members',
-                        through: { where: { UserId: socket.user.id } }
-                    }]
-                });
+                const serverIdStr = String(serverId); // Ensure serverId is treated as string for map keys
+                const userIdStr = String(socket.user.id);
 
-                if (!serverData || !serverData.members.length) {
-                    throw new Error('您不是该服务器的成员');
+                const { data: serverMember, error: memberError } = await supabase
+                    .from('server_members')
+                    .select('user_id')
+                    .eq('server_id', serverId)
+                    .eq('user_id', socket.user.id) // socket.user.id is Supabase UUID
+                    .maybeSingle(); // Use maybeSingle to not error if user is not a member
+
+                if (memberError) throw memberError;
+
+                if (!serverMember) {
+                    throw new Error('You are not a member of this server.');
                 }
-                if (!activeServers.has(String(serverId))) {
-                    activeServers.set(serverId, {
+
+                if (!activeServers.has(serverIdStr)) {
+                    activeServers.set(serverIdStr, {
                         members: new Set(),
                         lastActivity: new Date()
                     });
                 }
-                const server = activeServers.get(String(serverId));
-                server.members.add(String(socket.user.id));
+                const server = activeServers.get(serverIdStr);
+                server.members.add(userIdStr);
                 server.lastActivity = new Date();
-                socket.join(`server:${serverId}`);
-                io.to(`server:${serverId}`).emit('memberJoined', {
+                socket.join(`server:${serverIdStr}`);
+
+                console.log(`Socket: User ${socket.user.username} joined server room server:${serverIdStr}`);
+                io.to(`server:${serverIdStr}`).emit('memberJoined', {
                     userId: socket.user.id,
                     username: socket.user.username,
                     timestamp: new Date(),
                     onlineCount: server.members.size
                 });
             } catch (error) {
-                console.error(`用户 ${socket.user.username} 加入服务器 ${serverId} 失败:`, error.message);
-                socket.emit('error', error.message);
+                console.error(`User ${socket.user.username} joining server ${serverId} failed:`, error.message);
+                socket.emit('joinServerError', { serverId, message: error.message });
             }
         });
 
         socket.on('serverMessage', async (data) => {
             try {
                 const { serverId, message, type = 'text' } = data;
+                const serverIdStr = String(serverId);
+                const userIdStr = String(socket.user.id);
                 
-                const server = activeServers.get(String(serverId));
-                if (!server || !server.members.has(String(socket.user.id))) {
-                    throw new Error('您不在该服务器中');
+                const server = activeServers.get(serverIdStr);
+                if (!server || !server.members.has(userIdStr)) {
+                    throw new Error('You are not currently in this server room or server is inactive.');
                 }
 
-                // 更新服务器活跃时间
                 server.lastActivity = new Date();
 
                 const messageData = {
@@ -114,26 +137,30 @@ export const initSocket = (httpServer) => {
                     timestamp: new Date()
                 };
                 
-                io.to(`server:${serverId}`).emit('message', messageData);
+                io.to(`server:${serverIdStr}`).emit('message', messageData);
             } catch (error) {
-                console.error(`用户 ${socket.user.username} 在服务器 ${data.serverId} 发送消息失败:`, error.message);
-                socket.emit('error', error.message);
+                console.error(`User ${socket.user.username} sending message to server ${data.serverId} failed:`, error.message);
+                socket.emit('serverMessageError', { serverId: data.serverId, message: error.message });
             }
         });
 
         socket.on('leaveServer', async (serverId) => {
             try {
-                const server = activeServers.get(String(serverId));
-                if (server && server.members.has(String(socket.user.id))) {
-                    server.members.delete(String(socket.user.id));
-                    socket.leave(`server:${serverId}`);
+                const serverIdStr = String(serverId);
+                const userIdStr = String(socket.user.id);
+                const server = activeServers.get(serverIdStr);
+
+                if (server && server.members.has(userIdStr)) {
+                    server.members.delete(userIdStr);
+                    socket.leave(`server:${serverIdStr}`);
+                    console.log(`Socket: User ${socket.user.username} left server room server:${serverIdStr}`);
                     
                     if (server.members.size === 0) {
-                        activeServers.delete(String(serverId));
-                        // 服务器没有在线成员时自动删除
-                        await deleteEmptyServer(serverId);
+                        activeServers.delete(serverIdStr);
+                        console.log(`Socket: Server ${serverIdStr} is now empty of active users.`);
+                        await deleteEmptyServerIfNoMembersInDb(serverId); // Check DB members too
                     } else {
-                        io.to(`server:${serverId}`).emit('memberLeft', {
+                        io.to(`server:${serverIdStr}`).emit('memberLeft', {
                             userId: socket.user.id,
                             username: socket.user.username,
                             timestamp: new Date(),
@@ -142,31 +169,33 @@ export const initSocket = (httpServer) => {
                     }
                 }
             } catch (error) {
-                console.error(`用户 ${socket.user.username} 离开服务器 ${serverId} 失败:`, error.message);
-                socket.emit('error', error.message);
+                console.error(`User ${socket.user.username} leaving server ${serverId} failed:`, error.message);
+                socket.emit('leaveServerError', { serverId, message: error.message });
             }
         });
 
         socket.on('disconnect', async () => {
-            console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) disconnected.`);
+            console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) disconnected socket ID ${socket.id}.`);
             const userSockets = onlineUsers.get(socket.user.id);
             if (userSockets) {
                 userSockets.delete(socket.id);
                 if (userSockets.size === 0) {
                     onlineUsers.delete(socket.user.id);
+                    console.log(`Socket: User ${socket.user.username} is now fully offline.`);
                 }
             }
 
-            // 处理用户离开的服务器
-            const serversToDelete = [];
-            activeServers.forEach((server, serverId) => {
-                if (server.members.has(String(socket.user.id))) {
-                    server.members.delete(String(socket.user.id));
+            const userIdStr = String(socket.user.id);
+            activeServers.forEach((server, serverIdStr) => { // serverId is already string key
+                if (server.members.has(userIdStr)) {
+                    server.members.delete(userIdStr);
+                    console.log(`Socket: User ${socket.user.username} removed from active list of server ${serverIdStr}`);
                     if (server.members.size === 0) {
-                        activeServers.delete(String(serverId));
-                        serversToDelete.push(serverId);
+                        activeServers.delete(serverIdStr);
+                        console.log(`Socket: Server ${serverIdStr} is now empty of active users due to disconnect.`);
+                        deleteEmptyServerIfNoMembersInDb(Number(serverIdStr)); // Convert back to number if DB expects it
                     } else {
-                        io.to(`server:${serverId}`).emit('memberLeft', {
+                        io.to(`server:${serverIdStr}`).emit('memberLeft', {
                             userId: socket.user.id,
                             username: socket.user.username,
                             timestamp: new Date(),
@@ -175,43 +204,53 @@ export const initSocket = (httpServer) => {
                     }
                 }
             });
-
-            // 删除空的服务器
-            for (const serverId of serversToDelete) {
-                await deleteEmptyServer(serverId);
-            }
         });
     });
 
     return io;
 };
 
-// 删除空服务器的函数
-async function deleteEmptyServer(serverId) {
+async function deleteEmptyServerIfNoMembersInDb(serverId) {
     try {
-        console.log(`检查服务器 ${serverId} 是否需要删除...`);
+        console.log(`Socket: Checking server ${serverId} for potential deletion (no active users).`);
         
-        // 检查数据库中是否还有成员
-        const memberCount = await db.ServerMember.count({
-            where: { ServerId: serverId }
-        });
-        
-        if (memberCount === 0) {
-            // 删除服务器相关数据
-            await db.ServerJoinRequest.destroy({
-                where: { serverId: serverId }
-            });
-            
-            await db.Server.destroy({
-                where: { id: serverId }
-            });
-            
-            console.log(`服务器 ${serverId} 已自动删除（无成员）`);
-        } else {
-            console.log(`服务器 ${serverId} 仍有 ${memberCount} 个成员，不删除`);
+        const { count, error: countError } = await supabase
+            .from('server_members')
+            .select('id', { count: 'exact', head: true })
+            .eq('server_id', serverId);
+
+        if (countError) {
+            console.error(`Socket: Error counting members for server ${serverId}:`, countError.message);
+            return;
         }
-    } catch (error) {
-        console.error(`删除空服务器 ${serverId} 失败:`, error);
+        
+        if (count === 0) {
+            console.log(`Socket: Server ${serverId} has no members in DB. Proceeding with deletion.`);
+            const { error: deleteRequestsError } = await supabase
+                .from('server_join_requests')
+                .delete()
+                .eq('server_id', serverId);
+
+            if (deleteRequestsError) {
+                console.error(`Socket: Error deleting join requests for server ${serverId}:`, deleteRequestsError.message);
+                // Continue to attempt server deletion
+            }
+            
+            const { error: deleteServerError } = await supabase
+                .from('servers')
+                .delete()
+                .eq('id', serverId);
+
+            if (deleteServerError) {
+                console.error(`Socket: Error deleting server ${serverId}:`, deleteServerError.message);
+            } else {
+                console.log(`Socket: Server ${serverId} and its join requests deleted successfully from DB.`);
+            }
+        } else {
+            console.log(`Socket: Server ${serverId} still has ${count} members in DB, not deleting.`);
+        }
+    } catch (error) { // Catch-all for unexpected errors in this function
+        console.error(`Socket: Unexpected error in deleteEmptyServerIfNoMembersInDb for server ${serverId}:`, error.message);
     }
 }
 
@@ -226,7 +265,8 @@ export const getActiveServersInfo = () => {
     const info = {};
     activeServers.forEach((data, serverId) => {
         info[serverId] = {
-            onlineMemberCount: data.members.size
+            onlineMemberCount: data.members.size,
+            lastActivity: data.lastActivity
         };
     });
     return info;
