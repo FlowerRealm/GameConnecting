@@ -30,29 +30,21 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 // Helper function to execute raw SQL
 async function executeSQL(sql) {
   try {
-    // Supabase uses pg_meta.query for direct SQL, but rpc should also work for DDL.
-    // If rpc 'sql' doesn't work for some DDL, direct query or Supabase CLI might be alternatives.
     const { data, error } = await supabase.rpc('sql', { sql });
 
     if (error) {
-      // Check if the error is because the table/type/function/trigger already exists
-      // Common PostgreSQL error codes for "already exists":
-      // 42P07: duplicate_table (for CREATE TABLE)
-      // 42710: duplicate_function (for CREATE FUNCTION)
-      // 42723: duplicate_object (can be for types, etc.)
-      // 23505: unique_violation (can happen with CREATE UNIQUE INDEX IF NOT EXISTS if not careful)
       if (error.code === '42P07' || error.code === '42710' || error.code === '42723' || error.message.includes('already exists')) {
         console.warn(`Warning (might be ignorable if script is re-run): ${error.message}`);
-        return { data: null, error: null, warning: error.message }; // Indicate success with warning
+        return { data: null, error: null, warning: error.message };
       }
       console.error(`Error executing SQL: ${error.message}`, error);
-      throw error; // Re-throw for critical errors
+      throw error;
     }
     console.log(`Successfully executed: ${sql.substring(0, 120).replace(/\n/g, " ")}...`);
     return { data, error: null };
   } catch (err) {
     console.error(`Exception during SQL execution for "${sql.substring(0, 120).replace(/\n/g, " ")}...": ${err.message}`);
-    throw err; // Re-throw to stop script on critical errors
+    throw err;
   }
 }
 
@@ -62,17 +54,16 @@ async function setupTables() {
 
   try {
     // --- Create user_profiles table ---
-    // Stores public user information, extending auth.users
     await executeSQL(`
       CREATE TABLE IF NOT EXISTS public.user_profiles (
-        id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, -- Links to Supabase auth.users
+        id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
         username TEXT UNIQUE NOT NULL CHECK (char_length(username) >= 3 AND char_length(username) <= 50),
-        note TEXT CHECK (char_length(note) <= 500), -- Optional user note or bio
-        role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator', 'admin')), -- User role
-        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'suspended', 'banned')), -- User account status
-        approved_by UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- Admin who approved the profile (if applicable)
-        approved_at TIMESTAMPTZ, -- Timestamp of approval
-        admin_note TEXT CHECK (char_length(admin_note) <= 1000), -- Notes by admin for this user
+        note TEXT CHECK (char_length(note) <= 500),
+        role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator', 'admin')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'suspended', 'banned')),
+        approved_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+        approved_at TIMESTAMPTZ,
+        admin_note TEXT CHECK (char_length(admin_note) <= 1000),
         created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
         updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
       );
@@ -80,92 +71,88 @@ async function setupTables() {
     console.log('Table "user_profiles" setup process completed.');
 
     // --- Create friendships table ---
-    // Manages relationships between users
     await executeSQL(`
       CREATE TABLE IF NOT EXISTS public.friendships (
         id BIGSERIAL PRIMARY KEY,
         user_id_1 UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
         user_id_2 UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-        status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'declined', 'blocked')), -- Friendship status
-        action_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- User who performed the last action
+        status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'declined', 'blocked')),
+        action_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
         created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
         updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-        CONSTRAINT user_order_check CHECK (user_id_1 < user_id_2), -- Ensures unique pairs regardless of order
-        UNIQUE (user_id_1, user_id_2) -- Ensures a unique friendship pair
+        CONSTRAINT user_order_check CHECK (user_id_1 < user_id_2),
+        UNIQUE (user_id_1, user_id_2)
       );
     `);
     console.log('Table "friendships" setup process completed.');
 
-    // --- Create servers table ---
-    // Stores information about game servers or communities
+    // --- Create rooms table (formerly servers) ---
     await executeSQL(`
-      CREATE TABLE IF NOT EXISTS public.servers (
+      CREATE TABLE IF NOT EXISTS public.rooms (
         id BIGSERIAL PRIMARY KEY,
         name TEXT NOT NULL CHECK (char_length(name) >= 3 AND char_length(name) <= 100),
         description TEXT CHECK (char_length(description) <= 1000),
-        created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- User who created the server
-        last_activity TIMESTAMPTZ DEFAULT now() NOT NULL, -- Tracks recent activity for sorting/filtering
+        creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- Renamed from created_by
+        room_type TEXT NOT NULL DEFAULT 'public' CHECK (room_type IN ('public', 'private')), -- Added column
+        last_active_at TIMESTAMPTZ DEFAULT now() NOT NULL, -- Renamed from last_activity
         created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
         updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
       );
     `);
-    console.log('Table "servers" setup process completed.');
+    console.log('Table "rooms" setup process completed.');
 
-    // --- Create server_members table ---
-    // Manages user membership and roles within servers
+    // --- Create room_members table (formerly server_members) ---
     await executeSQL(`
-      CREATE TABLE IF NOT EXISTS public.server_members (
+      CREATE TABLE IF NOT EXISTS public.room_members (
         id BIGSERIAL PRIMARY KEY,
-        server_id BIGINT NOT NULL REFERENCES public.servers(id) ON DELETE CASCADE,
+        room_id BIGINT NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE, -- Renamed from server_id
         user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-        role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin', 'owner')), -- Role within the server
+        role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin', 'owner')),
         joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-        last_active TIMESTAMPTZ DEFAULT now() NOT NULL, -- Tracks user's last activity within the server
+        last_active TIMESTAMPTZ DEFAULT now() NOT NULL,
         created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
         updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-        UNIQUE (server_id, user_id) -- Ensures a user is only listed once per server
+        UNIQUE (room_id, user_id) -- Updated for room_id
       );
     `);
-    console.log('Table "server_members" setup process completed.');
+    console.log('Table "room_members" setup process completed.');
 
-    // --- Create server_join_requests table ---
-    // Manages requests from users to join private servers
+    // --- Create room_join_requests table (formerly server_join_requests) ---
     await executeSQL(`
-      CREATE TABLE IF NOT EXISTS public.server_join_requests (
+      CREATE TABLE IF NOT EXISTS public.room_join_requests (
         id BIGSERIAL PRIMARY KEY,
-        server_id BIGINT NOT NULL REFERENCES public.servers(id) ON DELETE CASCADE,
+        room_id BIGINT NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE, -- Renamed from server_id
         user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), -- Status of the join request
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
         requested_at TIMESTAMPTZ DEFAULT now() NOT NULL,
         created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
         updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-        UNIQUE (server_id, user_id) -- Prevents duplicate join requests
+        UNIQUE (room_id, user_id) -- Updated for room_id
       );
     `);
-    console.log('Table "server_join_requests" setup process completed.');
+    console.log('Table "room_join_requests" setup process completed.');
 
     // --- RLS (Row Level Security) ---
-    // It's CRITICAL to enable RLS for all tables that store sensitive data
-    // and define appropriate policies.
-    // Example for user_profiles (you'll need to adapt and extend this for all tables):
-    // await executeSQL(`ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;`);
-    // await executeSQL(`
-    //   CREATE POLICY "Public profiles are viewable by everyone."
-    //   ON public.user_profiles FOR SELECT USING (true);
-    // `); // This is a very permissive read policy, adjust as needed.
-    // await executeSQL(`
-    //   CREATE POLICY "Users can insert their own profile."
-    //   ON public.user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
-    // `);
-    // await executeSQL(`
-    //   CREATE POLICY "Users can update their own profile."
-    //   ON public.user_profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
-    // `);
-    // console.log('RLS policies for "user_profiles" (example) setup process completed.');
-
+    // Reminder: Enable RLS and define policies for all tables with sensitive data.
+    // Example policies for user_profiles are commented out below for brevity but should be implemented.
+    /*
+    await executeSQL(`ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;`);
+    await executeSQL(`
+      CREATE POLICY "Public profiles are viewable by everyone."
+      ON public.user_profiles FOR SELECT USING (true);
+    `);
+    await executeSQL(`
+      CREATE POLICY "Users can insert their own profile."
+      ON public.user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
+    `);
+    await executeSQL(`
+      CREATE POLICY "Users can update their own profile."
+      ON public.user_profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+    `);
+    console.log('RLS policies for "user_profiles" (example) setup process completed.');
+    */
 
     // --- Create functions for created_at and updated_at ---
-    // This function will be called by triggers to automatically update the 'updated_at' column
     await executeSQL(`
       CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
       RETURNS TRIGGER AS $$
@@ -178,9 +165,9 @@ async function setupTables() {
     console.log('Function "trigger_set_timestamp" setup process completed.');
 
     // --- Apply triggers to tables for updated_at ---
-    const tablesWithUpdatedAt = ['user_profiles', 'friendships', 'servers', 'server_members', 'server_join_requests'];
+    // Updated table names in this array
+    const tablesWithUpdatedAt = ['user_profiles', 'friendships', 'rooms', 'room_members', 'room_join_requests'];
     for (const tableName of tablesWithUpdatedAt) {
-      // Drop existing trigger first to make script idempotent
       await executeSQL(`DROP TRIGGER IF EXISTS set_timestamp ON public.${tableName};`);
       await executeSQL(`
         CREATE TRIGGER set_timestamp
@@ -195,7 +182,6 @@ async function setupTables() {
 
   } catch (error) {
     console.error('Failed to complete Supabase table setup:', error.message);
-    // If any step fails, we exit with an error code
     process.exit(1);
   }
 }

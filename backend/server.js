@@ -12,7 +12,8 @@ import { dirname } from 'path';
 import { createServer } from 'http';
 import cors from 'cors';
 import authRouter from './src/api/auth.js';
-import serversRouter from './src/api/servers.js';
+// import serversRouter from './src/api/servers.js'; // Old import
+import roomsRouter from './src/api/rooms.js'; // New import
 import adminRouter from './src/api/admin.js';
 import friendsRouter from './src/api/friends.js';
 import usersRouter from './src/api/users.js';
@@ -53,8 +54,9 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use('/auth', authRouter);
-app.use('/servers', serversRouter);
+app.use('/auth', authRouter); // Assuming other routes remain as is
+// app.use('/servers', serversRouter); // Remove old server route
+app.use('/api/rooms', roomsRouter); // Add new rooms route as per instruction
 app.use('/admin', adminRouter);
 app.use('/friends', friendsRouter);
 app.use('/users', usersRouter);

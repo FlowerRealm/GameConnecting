@@ -48,59 +48,60 @@ BEFORE UPDATE ON public.friendships
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_set_timestamp();
 
--- Table: servers
--- Stores information about game servers or communities
-CREATE TABLE IF NOT EXISTS public.servers (
+-- Table: rooms
+-- Stores information about game rooms or communities
+CREATE TABLE IF NOT EXISTS public.rooms (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL CHECK (char_length(name) >= 3 AND char_length(name) <= 100),
   description TEXT CHECK (char_length(description) <= 1000),
-  created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- User who created the server
-  last_activity TIMESTAMPTZ DEFAULT now() NOT NULL, -- Tracks recent activity for sorting/filtering
+  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- User who created the room
+  room_type TEXT NOT NULL DEFAULT 'public' CHECK (room_type IN ('public', 'private')), -- Type of the room
+  last_active_at TIMESTAMPTZ DEFAULT now() NOT NULL, -- Tracks recent activity for sorting/filtering
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-DROP TRIGGER IF EXISTS set_timestamp ON public.servers;
+DROP TRIGGER IF EXISTS set_timestamp ON public.rooms;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON public.servers
+BEFORE UPDATE ON public.rooms
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_set_timestamp();
 
--- Table: server_members
--- Manages user membership and roles within servers
-CREATE TABLE IF NOT EXISTS public.server_members (
+-- Table: room_members
+-- Manages user membership and roles within rooms
+CREATE TABLE IF NOT EXISTS public.room_members (
   id BIGSERIAL PRIMARY KEY,
-  server_id BIGINT NOT NULL REFERENCES public.servers(id) ON DELETE CASCADE,
+  room_id BIGINT NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin', 'owner')), -- Role within the server
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin', 'owner')), -- Role within the room
   joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  last_active TIMESTAMPTZ DEFAULT now() NOT NULL, -- Tracks user's last activity within the server
+  last_active TIMESTAMPTZ DEFAULT now() NOT NULL, -- Tracks user's last activity within the room
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  UNIQUE (server_id, user_id) -- Ensures a user is only listed once per server
+  UNIQUE (room_id, user_id) -- Ensures a user is only listed once per room
 );
 
-DROP TRIGGER IF EXISTS set_timestamp ON public.server_members;
+DROP TRIGGER IF EXISTS set_timestamp ON public.room_members;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON public.server_members
+BEFORE UPDATE ON public.room_members
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_set_timestamp();
 
--- Table: server_join_requests
--- Manages requests from users to join private servers
-CREATE TABLE IF NOT EXISTS public.server_join_requests (
+-- Table: room_join_requests
+-- Manages requests from users to join private rooms
+CREATE TABLE IF NOT EXISTS public.room_join_requests (
   id BIGSERIAL PRIMARY KEY,
-  server_id BIGINT NOT NULL REFERENCES public.servers(id) ON DELETE CASCADE,
+  room_id BIGINT NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), -- Status of the join request
   requested_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  UNIQUE (server_id, user_id) -- Prevents duplicate join requests
+  UNIQUE (room_id, user_id) -- Prevents duplicate join requests
 );
 
-DROP TRIGGER IF EXISTS set_timestamp ON public.server_join_requests;
+DROP TRIGGER IF EXISTS set_timestamp ON public.room_join_requests;
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON public.server_join_requests
+BEFORE UPDATE ON public.room_join_requests
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_set_timestamp();
