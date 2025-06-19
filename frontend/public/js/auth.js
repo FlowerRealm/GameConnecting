@@ -20,15 +20,16 @@ export class AuthManager {
     /**
      * 登录
      */
-    async login(username, password) {
+    async login(email, password) {
         try {
             const result = await this.apiService.request('/auth/login', {
                 method: 'POST',
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ email, password })
             });
 
-            if (result.success && result.data && result.data.data && result.data.data.token) {
-                this.#saveAuthData(result.data.data.token, result.data.data.username, result.data.data.role);
+            // Corrected parsing of backend response structure
+            if (result.success && result.data && result.data.access_token) {
+                this.#saveAuthData(result.data.access_token, result.data.username, result.data.role);
             }
             return result;
         } catch (error) {
