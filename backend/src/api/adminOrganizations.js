@@ -22,6 +22,25 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /pending-memberships - List all pending organization membership requests
+// This route is already protected by authenticateToken and isAdmin due to router.use()
+router.get('/pending-memberships', async (req, res) => {
+    try {
+        // The service function will handle fetching records where status_in_org is 'pending_approval'
+        // and joining with user_profiles and organizations tables.
+        const result = await adminOrgService.listPendingMemberships(req.query); // Pass query for potential pagination
+
+        if (result.success) {
+            res.json({ success: true, data: result.data, message: result.message });
+        } else {
+            res.status(result.status || 500).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Admin list pending memberships error:', error);
+        res.status(500).json({ success: false, message: 'Failed to list pending membership requests.' });
+    }
+});
+
 // GET /:orgId - Get details of a specific organization
 router.get('/:orgId', async (req, res) => {
     try {

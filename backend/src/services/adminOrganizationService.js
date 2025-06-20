@@ -324,3 +324,65 @@ export async function listPublicOrganizations() {
         return { success: false, message: 'An unexpected error occurred while fetching public organizations.', error: error, status: 500 };
     }
 }
+
+/**
+ * Lists all organization membership requests with 'pending_approval' status.
+ * @param {object} queryParams - Query parameters for pagination (page, limit).
+ * @returns {Promise<object>} Result object with pending memberships.
+ */
+export async function listPendingMemberships(queryParams = {}) {
+    const page = parseInt(queryParams.page) || 1;
+    const limit = parseInt(queryParams.limit) || DEFAULT_PAGE_SIZE;
+    const offset = (page - 1) * limit;
+
+    try {
+        const { data, error, count } = await supabase
+            .from('user_organization_memberships')
+            .select(`
+                id,
+                user_id,
+                organization_id,
+                role_in_org,
+                status_in_org,
+                created_at,
+                user_profiles ( username, email ),
+                organizations ( name )
+            `, { count: 'exact' })
+            .eq('status_in_org', 'pending_approval')
+            .order('created_at', { ascending: true })
+            .range(offset, offset + limit - 1);
+
+        if (error) {
+            console.error('Error fetching pending memberships:', error);
+            return { success: false, message: 'Failed to fetch pending memberships.', error, status: 500 };
+        }
+
+        const pendingRequests = data.map(req => ({
+            membershipId: req.id,
+            userId: req.user_id,
+            username: req.user_profiles?.username,
+            userEmail: req.user_profiles?.email,
+            organizationId: req.organization_id,
+            organizationName: req.organizations?.name,
+            requestedRole: req.role_in_org,
+            status: req.status_in_org,
+            requestedAt: req.created_at
+        }));
+
+        return {
+            success: true,
+            data: {
+                pendingRequests,
+                total: count,
+                page,
+                totalPages: Math.ceil((count || 0) / limit),
+                limit
+            },
+            message: "Pending memberships retrieved successfully.",
+            status: 200
+        };
+    } catch (error) {
+        console.error('Unexpected error in listPendingMemberships:', error);
+        return { success: false, message: 'An unexpected error occurred while fetching pending memberships.', error, status: 500 };
+    }
+}
