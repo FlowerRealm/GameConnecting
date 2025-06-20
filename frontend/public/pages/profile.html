@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户资料 - GameConnecting</title>
+    <link rel="stylesheet" href="../styles/style.css">
+    <link rel="stylesheet" href="../styles/components/navbar.css">
+    <link rel="stylesheet" href="../styles/components/form.css">
+    <link rel="stylesheet" href="../styles/pages/profile.css"> <!-- Optional: Create this CSS file if specific styles are needed -->
+</head>
+<body>
+    <header class="navbar-container">
+        <!-- Navbar will be injected here by navbar.js -->
+    </header>
+
+    <main class="container">
+        <h1>用户资料</h1>
+
+        <section id="change-password-section">
+            <h2>更改密码</h2>
+            <form id="change-password-form" class="form-container">
+                <div class="form-group">
+                    <label for="new-password">新密码:</label>
+                    <input type="password" id="new-password" name="new-password" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">确认新密码:</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <button type="submit" id="change-password-button" class="button">更新密码</button>
+                </div>
+                <div id="message-area" class="message-area" style="display: none;"></div>
+            </form>
+        </section>
+
+        <!-- Add other profile sections here in the future if needed -->
+
+    </main>
+
+    <footer>
+        <!-- Footer content if any -->
+    </footer>
+
+    <script type="module" src="../js/navbar.js"></script>
+    <script type="module" src="../js/profile.js"></script>
+</body>
+</html>
