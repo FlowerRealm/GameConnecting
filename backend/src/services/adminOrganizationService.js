@@ -300,3 +300,27 @@ export async function removeOrganizationMember(orgId, userId) {
         return { success: false, message: error.message, status: 500 };
     }
 }
+
+/**
+ * Lists all publicly listable organizations.
+ * @returns {Promise<object>} Result object.
+ */
+export async function listPublicOrganizations() {
+    try {
+        const { data, error } = await supabase
+            .from('organizations')
+            .select('id, name, description') // Select only specific fields for public view
+            .eq('is_publicly_listable', true)
+            .order('name', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching public organizations:', error);
+            // Return the error object itself for more detailed client-side handling if needed
+            return { success: false, message: 'Failed to fetch public organizations.', error: error, status: 500 };
+        }
+        return { success: true, data: data || [], status: 200 };
+    } catch (error) { // Catch unexpected errors
+        console.error('Unexpected error in listPublicOrganizations:', error);
+        return { success: false, message: 'An unexpected error occurred while fetching public organizations.', error: error, status: 500 };
+    }
+}
