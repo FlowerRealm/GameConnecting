@@ -132,6 +132,35 @@ async function setupTables() {
     `);
     console.log('Table "room_join_requests" setup process completed.');
 
+    // --- Create organizations table ---
+    await executeSQL(`
+      CREATE TABLE IF NOT EXISTS public.organizations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL UNIQUE CHECK (char_length(name) >= 3 AND char_length(name) <= 100),
+        description TEXT CHECK (char_length(description) <= 1000),
+        created_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+        is_publicly_listable BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    console.log('Table "organizations" setup process completed.');
+
+    // --- Create user_organization_memberships table ---
+    await executeSQL(`
+      CREATE TABLE IF NOT EXISTS public.user_organization_memberships (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+        organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+        role_in_org TEXT NOT NULL DEFAULT 'member' CHECK (role_in_org IN ('member', 'org_admin')),
+        status_in_org TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status_in_org IN ('pending_approval', 'approved', 'invited', 'rejected', 'left', 'removed')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CONSTRAINT user_organization_unique UNIQUE (user_id, organization_id)
+      );
+    `);
+    console.log('Table "user_organization_memberships" setup process completed.');
+
     // --- RLS (Row Level Security) ---
     // Reminder: Enable RLS and define policies for all tables with sensitive data.
     // Example policies for user_profiles are commented out below for brevity but should be implemented.
@@ -166,7 +195,7 @@ async function setupTables() {
 
     // --- Apply triggers to tables for updated_at ---
     // Updated table names in this array
-    const tablesWithUpdatedAt = ['user_profiles', 'friendships', 'rooms', 'room_members', 'room_join_requests'];
+    const tablesWithUpdatedAt = ['user_profiles', 'friendships', 'rooms', 'room_members', 'room_join_requests', 'organizations', 'user_organization_memberships'];
     for (const tableName of tablesWithUpdatedAt) {
       await executeSQL(`DROP TRIGGER IF EXISTS set_timestamp ON public.${tableName};`);
       await executeSQL(`

@@ -13,7 +13,8 @@ import { createServer } from 'http';
 import cors from 'cors';
 import authRouter from './src/api/auth.js';
 import roomsRouter from './src/api/rooms.js';
-import adminRouter from './src/api/admin.js';
+import adminRouter from './src/api/admin.js'; // General admin routes
+import adminOrganizationsRouter from './src/api/adminOrganizations.js'; // Admin routes for organizations
 import friendsRouter from './src/api/friends.js';
 import usersRouter from './src/api/users.js';
 import { initSocket } from './src/socket/index.js';
@@ -74,7 +75,8 @@ app.use(express.json());
 
 app.use('/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
-app.use('/admin', adminRouter);
+app.use('/admin', adminRouter); // Keep for existing general admin tasks if any
+app.use('/api/admin/organizations', adminOrganizationsRouter); // New route for admin org management
 app.use('/friends', friendsRouter);
 app.use('/users', usersRouter);
 
