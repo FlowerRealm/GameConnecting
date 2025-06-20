@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { supabase } from '../supabaseClient.js'; // Changed import
-import { updateUserPassword } from '../services/userService.js';
+import { updateUserPassword, getUserOrganizationMemberships } from '../services/userService.js'; // Added getUserOrganizationMemberships
 
 const router = express.Router();
 
@@ -30,6 +30,33 @@ router.post('/me/password', authenticateToken, async (req, res) => {
         console.error('更改密码路由处理失败:', error);
         // Generic error message for any other unexpected errors from the service call
         res.status(500).json({ success: false, message: '更改密码时发生服务器内部错误。' });
+    }
+});
+
+// GET /me/organizations - Fetch organizations for the current user
+router.get('/me/organizations', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id; // Extracted from token by authenticateToken middleware
+        if (!userId) {
+            // This case should ideally be handled by authenticateToken ensuring user is present
+            return res.status(401).json({ success: false, message: '用户未认证或用户ID缺失。' });
+        }
+
+        // Call the service function to get organization memberships
+        // Assuming userService.getUserOrganizationMemberships will be implemented
+        const memberships = await getUserOrganizationMemberships(userId);
+
+        res.status(200).json({
+            success: true,
+            data: memberships
+        });
+    } catch (error) {
+        console.error(`Error fetching organizations for user ${req.user?.id}:`, error);
+        res.status(500).json({
+            success: false,
+            message: '获取用户组织信息失败。',
+            error: error.message // Provide error message for debugging if appropriate
+        });
     }
 });
 

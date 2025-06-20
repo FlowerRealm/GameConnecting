@@ -1,5 +1,6 @@
 import { AuthManager } from './auth.js'; // Assuming AuthManager is in auth.js
 import { initNavbar } from './navbar.js'; // To initialize navbar on this page
+import { apiService } from './apiService.js'; // Import apiService
 
 // Initialize navbar
 initNavbar();
@@ -11,6 +12,9 @@ if (!authManager.isAuthenticated()) {
     window.location.href = '/login';
     // Stop script execution if redirecting
     throw new Error('User not authenticated. Redirecting to login.');
+} else {
+    // User is authenticated, load their organizations
+    loadMyOrganizations();
 }
 
 const changePasswordForm = document.getElementById('change-password-form');
@@ -84,4 +88,42 @@ if (changePasswordForm) {
     });
 } else {
     console.error('Change password form not found on profile page.');
+}
+
+// Function to load and display user's organizations
+async function loadMyOrganizations() {
+    const container = document.getElementById('organizations-list-container');
+    if (!container) {
+        console.error('Organizations list container not found.');
+        return;
+    }
+
+    try {
+        const response = await apiService.request('/users/me/organizations', 'GET');
+
+        if (response && response.success && Array.isArray(response.data)) {
+            if (response.data.length === 0) {
+                container.innerHTML = '<p>您尚未加入任何组织。</p>';
+            } else {
+                let html = '';
+                response.data.forEach(org => {
+                    html += `
+                        <div class="organization-item">
+                            <h3>${org.org_name}</h3>
+                            <p><strong>我的角色:</strong> ${org.role_in_org || '未指定'}</p>
+                            <p><strong>成员状态:</strong> ${org.status_in_org || '未知'}</p>
+                            ${org.org_description ? `<p><em>${org.org_description}</em></p>` : ''}
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+        } else {
+            container.innerHTML = `<p class="error-message">无法加载您的组织信息，请稍后再试。 (错误: ${response?.message || '未知错误'})</p>`;
+            console.error('Failed to load organizations:', response?.message);
+        }
+    } catch (error) {
+        console.error('Error fetching organizations:', error);
+        container.innerHTML = '<p class="error-message">加载组织信息时发生网络错误或服务器错误，请检查您的网络连接并稍后再试。</p>';
+    }
 }
