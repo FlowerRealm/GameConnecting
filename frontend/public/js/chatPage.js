@@ -5,6 +5,7 @@ import { ChatManager } from './chat.js';
 import { apiService } from './apiService.js';
 import { store } from './store.js';
 // import { initChatSidebar, updateSidebarServerDetails } from './chatSidebar.js';
+import { initVoiceChat, joinVoiceRoom, leaveVoiceRoom, toggleMute, setVoiceUsersUpdateCallback } from './voiceService.js';
 
 const auth = AuthManager.getInstance();
 let chatManager;
@@ -33,6 +34,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     socketManager.connect();
     chatManager = new ChatManager(socketManager);
+
+    // Initialize Voice Service
+    const socket = socketManager.getSocket();
+    if (socket) {
+        initVoiceChat(socket); // Initialize with the connected socket
+        setVoiceUsersUpdateCallback(updateVoiceUserListUI);
+    } else {
+        console.error('Socket not available for voice chat initialization after connect call.');
+        store.addNotification('语音聊天系统初始化失败，请刷新页面重试。', 'error');
+        // Disable voice chat UI elements if socket is not available
+        const toggleVoiceChatButton = document.getElementById('toggle-voice-chat-button');
+        if(toggleVoiceChatButton) toggleVoiceChatButton.disabled = true;
+    }
+
     const serverData = await loadServerDetails(serverId);
     if (!serverData) {
         document.getElementById('currentServerName').textContent = '错误：无法加载服务器信息';
@@ -86,6 +101,86 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         console.error('找不到离开服务器按钮');
     }
+
+    // --- Voice Chat UI Element Logic ---
+    const toggleVoiceChatButton = document.getElementById('toggle-voice-chat-button');
+    const toggleMuteButton = document.getElementById('toggle-mute-button');
+    let isInVoiceChat = false; // Basic state tracking for UI
+    let isMuted = false;
+
+    if (toggleVoiceChatButton) {
+        toggleVoiceChatButton.addEventListener('click', async () => { // Made async
+            // isInVoiceChat state will be managed by successful join/leave
+            if (!isInVoiceChat) { // If currently not in voice, try to join
+                if (currentServerDetails?.id) {
+                    try {
+                        const success = await joinVoiceRoom(currentServerDetails.id);
+                        if (success) {
+                            isInVoiceChat = true;
+                            toggleVoiceChatButton.innerHTML = '<i class="fas fa-phone-slash"></i> Leave Voice';
+                            toggleVoiceChatButton.classList.add('in-voice');
+                            toggleMuteButton.style.display = 'inline-block';
+                            isMuted = false; // Reset mute state on join
+                            toggleMuteButton.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+                            toggleMuteButton.classList.remove('muted');
+                        } else {
+                            // joinVoiceRoom handles alerts for media failure, UI should reflect not joined.
+                            isInVoiceChat = false; // Ensure state reflects failure
+                            toggleVoiceChatButton.innerHTML = '<i class="fas fa-phone"></i> Join Voice';
+                            toggleVoiceChatButton.classList.remove('in-voice');
+                            toggleMuteButton.style.display = 'none';
+                        }
+                    } catch (err) { // Catch errors from joinVoiceRoom if it throws any
+                        console.error("Error joining voice room:", err);
+                        store.addNotification(err.message || 'Failed to join voice chat.', 'error');
+                        isInVoiceChat = false; // Revert UI state on failure
+                        toggleVoiceChatButton.innerHTML = '<i class="fas fa-phone"></i> Join Voice';
+                        toggleVoiceChatButton.classList.remove('in-voice');
+                        toggleMuteButton.style.display = 'none';
+                    }
+                } else {
+                    console.error("Cannot join voice chat: serverId is not available.");
+                    store.addNotification('无法加入语音：服务器信息不明确。', 'error');
+                    // Ensure UI reflects not joined
+                    isInVoiceChat = false;
+                    toggleVoiceChatButton.innerHTML = '<i class="fas fa-phone"></i> Join Voice';
+                    toggleVoiceChatButton.classList.remove('in-voice');
+                    toggleMuteButton.style.display = 'none';
+                }
+            } else { // If currently in voice, leave
+                try {
+                    await leaveVoiceRoom();
+                    isInVoiceChat = false;
+                    toggleVoiceChatButton.innerHTML = '<i class="fas fa-phone"></i> Join Voice';
+                    toggleVoiceChatButton.classList.remove('in-voice');
+                    toggleMuteButton.style.display = 'none';
+                    toggleMuteButton.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+                    toggleMuteButton.classList.remove('muted');
+                    isMuted = false;
+                } catch (err) {
+                    console.error("Error leaving voice room:", err);
+                    store.addNotification(err.message || 'Failed to leave voice chat.', 'error');
+                    // UI might be out of sync if leave fails, consider how to handle
+                }
+            }
+        });
+    }
+
+    if (toggleMuteButton) {
+        toggleMuteButton.addEventListener('click', () => {
+            // isMuted state will now be determined by toggleMute's return value
+            const newMuteState = toggleMute();
+            isMuted = newMuteState;
+            if (isMuted) {
+                toggleMuteButton.innerHTML = '<i class="fas fa-microphone-slash"></i> Unmute';
+                toggleMuteButton.classList.add('muted');
+            } else {
+                toggleMuteButton.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+                toggleMuteButton.classList.remove('muted');
+            }
+        });
+    }
+    // --- End of Voice Chat UI Element Logic ---
 });
 
 async function loadServerDetails(serverId) {
@@ -102,4 +197,31 @@ async function loadServerDetails(serverId) {
         store.addNotification('加载服务器详情时出错。', 'error');
         return null;
     }
+}
+
+function updateVoiceUserListUI(voiceUsers) {
+    console.log('Updating voice user list UI with:', voiceUsers);
+    // const memberListContainer = document.getElementById('memberListContainer');
+    // Placeholder for actual UI update logic.
+    // This would involve iterating through currently displayed members
+    // and adding/removing a voice status indicator (e.g., an icon).
+    // Example:
+    // const allMemberElements = memberListContainer.querySelectorAll('.member-item[data-user-id]');
+    // allMemberElements.forEach(memberEl => {
+    //     const userId = memberEl.dataset.userId;
+    //     let voiceIcon = memberEl.querySelector('.voice-status-icon');
+    //     if (voiceUsers.some(vu => vu.userId === userId)) {
+    //         if (!voiceIcon) {
+    //             voiceIcon = document.createElement('i');
+    //             voiceIcon.className = 'fas fa-volume-up voice-status-icon'; // Example icon
+    //             // Append voiceIcon to a suitable place within memberEl
+    //             // memberEl.appendChild(voiceIcon);
+    //         }
+    //         voiceIcon.style.display = '';
+    //     } else {
+    //         if (voiceIcon) {
+    //             voiceIcon.style.display = 'none';
+    //         }
+    //     }
+    // });
 }

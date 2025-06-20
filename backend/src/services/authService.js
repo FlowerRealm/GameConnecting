@@ -1,7 +1,10 @@
 import { supabase } from '../supabaseClient.js';
+import { supabaseAdmin } from '../supabaseAdminClient.js'; // Added for admin operations
 
 // Service function for user registration
-async function registerUser(email, password, username, note) {
+async function registerUser(email, password, username, note, requestedOrganizationIds = []) {
+    let authUserId = null; // To store the ID of the created auth user for potential rollback
+
     try {
         // Step 1: Sign up the user with Supabase Auth
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -20,36 +23,84 @@ async function registerUser(email, password, username, note) {
         if (!authData.user) {
             return { success: false, error: { status: 500, message: '用户注册成功但未返回用户信息。可能需要邮件确认。' } };
         }
+        authUserId = authData.user.id; // Store auth user ID for potential rollback
 
         // Step 2: Insert user profile
         const { error: profileError } = await supabase
             .from('user_profiles')
             .insert({
-                id: authData.user.id,
+                id: authUserId,
                 username,
                 note: note || null,
                 role: 'user',
-                status: 'pending'
+                status: 'pending' // Or 'active' if auto-approved, 'pending' if admin approval needed
             });
 
         if (profileError) {
             console.error('Error inserting user profile in service:', profileError);
-            if (profileError.code === '23505') { // Unique violation
-                // TODO: Consider attempting to delete the authData.user if profile insertion fails.
-                // This requires admin privileges for Supabase client:
-                // await supabase.auth.admin.deleteUser(authData.user.id);
-                return { success: false, error: { status: 400, message: '该用户名已被使用或用户ID已存在配置中' } };
+            // Attempt to delete the auth user if profile creation fails
+            if (authUserId) {
+                console.log(`Attempting to delete auth user ${authUserId} due to profile insertion error.`);
+                const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+                if (deleteUserError) {
+                    console.error(`Failed to cleanup Supabase auth user ${authUserId} after profile insert error:`, deleteUserError);
+                } else {
+                    console.log(`Successfully deleted auth user ${authUserId} after profile error.`);
+                }
+            }
+            if (profileError.code === '23505') { // Unique violation for username
+                return { success: false, error: { status: 400, message: '该用户名已被使用。' } };
             }
             return { success: false, error: { status: 500, message: '用户配置信息创建失败: ' + profileError.message } };
         }
 
+        // Step 3: Handle requested organization memberships
+        if (requestedOrganizationIds && requestedOrganizationIds.length > 0) {
+            const membershipsToInsert = requestedOrganizationIds.map(orgId => ({
+                user_id: authUserId,
+                organization_id: orgId,
+                role_in_org: 'member', // Default role
+                status_in_org: 'pending_approval' // Default status
+            }));
+
+            const { error: membershipError } = await supabase
+                .from('user_organization_memberships')
+                .insert(membershipsToInsert);
+
+            if (membershipError) {
+                console.error('Error inserting organization memberships:', membershipError);
+                // Attempt to delete the auth user (which should cascade to user_profiles)
+                if (authUserId) {
+                    console.log(`Attempting to delete auth user ${authUserId} due to membership insertion error.`);
+                    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+                    if (deleteUserError) {
+                        console.error(`Failed to cleanup Supabase auth user ${authUserId} after membership insert error:`, deleteUserError);
+                    } else {
+                        console.log(`Successfully deleted auth user ${authUserId} after membership error.`);
+                    }
+                }
+                return { success: false, error: { status: 500, message: '创建组织成员请求失败: ' + membershipError.message } };
+            }
+        }
+
         return {
             success: true,
-            data: { userId: authData.user.id }
+            data: { userId: authUserId },
+            message: '注册成功，请等待管理员审核。如项目启用邮件确认，请先确认邮箱。'
         };
 
     } catch (error) {
-        console.error('Unknown error in registerUser service:', error);
+        console.error('Unknown error in registerUser service:', error
+        // If an authUserId was set, it means the auth user was created, try to clean up if something unexpected happened
+        if (authUserId) {
+            console.log(`Attempting to delete auth user ${authUserId} due to unknown error in registration process.`);
+            const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+            if (deleteUserError) {
+                console.error(`Failed to cleanup Supabase auth user ${authUserId} after unknown error:`, deleteUserError);
+            } else {
+                console.log(`Successfully deleted auth user ${authUserId} after unknown error.`);
+            }
+        }
         return { success: false, error: { status: 500, message: `注册服务发生未知错误: ${error.message}` } };
     }
 }
@@ -163,9 +214,6 @@ async function refreshAuthToken(clientRefreshToken) {
 
 // Service function for user logout
 async function logoutUser() {
-    // Supabase client's signOut method does not require the token to be passed if it was set
-    // during signIn or if the client instance is configured with it (e.g. via `supabase.auth.setAuth()`).
-    // The `authenticateToken` middleware in the route ensures a valid session exists.
     try {
         const { error } = await supabase.auth.signOut();
 

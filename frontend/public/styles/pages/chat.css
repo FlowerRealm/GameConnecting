@@ -1185,3 +1185,21 @@
         padding: 1rem;
     }
 }
+
+/* Styles for voice chat buttons */
+.chat-header .btn-icon {
+    margin-left: 10px;
+}
+.chat-header .btn-icon i {
+    margin-right: 5px;
+}
+/* Style for when user is in voice chat */
+#toggle-voice-chat-button.in-voice {
+    /* Example: change background or border */
+    background-color: #dc3545; /* Or a "hang up" color */
+    color: white;
+}
+#toggle-mute-button.muted {
+     /* Example: indicate muted state */
+    opacity: 0.7;
+}

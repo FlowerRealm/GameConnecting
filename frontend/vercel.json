@@ -2,26 +2,23 @@
     "version": 2,
     "builds": [
         {
-            "src": "webServer.js",
-            "use": "@vercel/node"
-        },
-        {
-            "src": "public/**",
-            "use": "@vercel/static"
+            "src": "package.json",
+            "use": "@vercel/static-build",
+            "config": { "distDir": "public" }
         }
     ],
     "routes": [
         {
             "src": "/js/(.*)",
-            "dest": "/public/js/$1"
+            "dest": "/js/$1"
         },
         {
             "src": "/styles/(.*)",
-            "dest": "/public/styles/$1"
+            "dest": "/styles/$1"
         },
         {
             "src": "/images/(.*)",
-            "dest": "/public/images/$1"
+            "dest": "/images/$1"
         },
         {
             "src": "/api/(.*)",
@@ -33,35 +30,35 @@
         },
         {
             "src": "/login",
-            "dest": "/public/pages/login.html"
+            "dest": "/pages/login.html"
         },
         {
             "src": "/register",
-            "dest": "/public/pages/register.html"
+            "dest": "/pages/register.html"
         },
         {
             "src": "/admin",
-            "dest": "/public/pages/admin.html"
+            "dest": "/pages/admin.html"
         },
         {
             "src": "/servers",
-            "dest": "/public/pages/servers.html"
+            "dest": "/pages/servers.html"
         },
         {
             "src": "/friends",
-            "dest": "/public/pages/friends.html"
+            "dest": "/pages/friends.html"
         },
         {
             "src": "/chat",
-            "dest": "/public/pages/chat.html"
+            "dest": "/pages/chat.html"
         },
         {
             "src": "/profile",
-            "dest": "/public/pages/profile.html"
+            "dest": "/pages/profile.html"
         },
         {
             "src": "/",
-            "dest": "/public/pages/index.html"
+            "dest": "/pages/index.html"
         },
         {
             "handle": "filesystem"

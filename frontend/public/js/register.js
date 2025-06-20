@@ -7,6 +7,7 @@
  */
 import { AuthManager } from './auth.js';
 import { initNavbar } from './navbar.js';
+import { apiService } from './apiService.js'; // Added import
 
 const auth = AuthManager.getInstance();
 if (auth.isAuthenticated()) {
@@ -14,6 +15,53 @@ if (auth.isAuthenticated()) {
 }
 
 initNavbar();
+
+async function loadAndRenderOrganizations() {
+    const container = document.getElementById('organization-select-container');
+    if (!container) {
+        console.error('Organization select container not found.');
+        return;
+    }
+
+    try {
+        const result = await apiService.request('/api/organizations'); // Uses the new public endpoint
+        if (result.success && result.data && result.data.length > 0) {
+            container.innerHTML = ''; // Clear "Loading..."
+            result.data.forEach(org => {
+                const div = document.createElement('div');
+                div.classList.add('checkbox-item'); // Optional: for styling
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `org-${org.id}`;
+                checkbox.name = 'organizationIds';
+                checkbox.value = org.id;
+
+                const label = document.createElement('label');
+                label.htmlFor = `org-${org.id}`;
+                label.textContent = org.name;
+                if (org.description) {
+                    label.title = org.description;
+                }
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        } else if (result.success && result.data && result.data.length === 0) {
+            container.innerHTML = '<p>暂无公开组织可供选择加入。</p>';
+        } else {
+            container.innerHTML = '<p>无法加载组织列表，请稍后再试。</p>';
+            console.error('Failed to load organizations:', result.message);
+        }
+    } catch (error) {
+        console.error('Error loading organizations:', error);
+        container.innerHTML = '<p>加载组织列表时发生错误。</p>';
+    }
+}
+
+// Load organizations when the script runs (module scripts are deferred by default)
+loadAndRenderOrganizations();
 
 const form = document.getElementById('register-form');
 const error = document.getElementById('error');
@@ -66,7 +114,16 @@ form.addEventListener('submit', async (e) => {
     }
 
     try {
-        const result = await auth.register({ username, password, note });
+        const selectedOrgCheckboxes = document.querySelectorAll('#organization-select-container input[name="organizationIds"]:checked');
+        const requestedOrganizationIds = Array.from(selectedOrgCheckboxes).map(cb => cb.value);
+
+        const result = await auth.register({
+            username,
+            password,
+            note,
+            requestedOrganizationIds // Add this new array
+        });
+
         if (result.success) {
             error.className = 'success';
             error.textContent = '注册成功，正在跳转到登录页面...';

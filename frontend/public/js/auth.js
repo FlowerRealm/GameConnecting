@@ -20,15 +20,16 @@ export class AuthManager {
     /**
      * 登录
      */
-    async login(username, password) {
+    async login(email, password) {
         try {
             const result = await this.apiService.request('/auth/login', {
                 method: 'POST',
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ email, password })
             });
 
-            if (result.success && result.data && result.data.data && result.data.data.token) {
-                this.#saveAuthData(result.data.data.token, result.data.data.username, result.data.data.role);
+            // Corrected parsing of backend response structure
+            if (result.success && result.data && result.data.access_token) {
+                this.#saveAuthData(result.data.access_token, result.data.username, result.data.role);
             }
             return result;
         } catch (error) {
@@ -66,6 +67,32 @@ export class AuthManager {
             .catch(error => console.warn('Backend logout request failed:', error));
 
         this.#removeAuthData();
+    }
+
+    /**
+     * 更改当前用户密码
+     */
+    async changePassword(newPassword) {
+        try {
+            // The backend endpoint must be authenticated
+            const result = await this.apiService.request('/api/users/me/password', {
+                method: 'POST',
+                body: JSON.stringify({ password: newPassword })
+            });
+
+            // If successful, the backend might return a success message.
+            // If the token becomes invalid due to password change, the user might need to log in again,
+            // or the backend could return a new token if session invalidation is not immediate.
+            // For now, just return the result. The caller (profile.js) will handle messages.
+            return result;
+        } catch (error) {
+            // apiService.request already handles and logs errors via ErrorHandler
+            // Return a generic failure object or rethrow if specific handling is needed here
+            return {
+                success: false,
+                message: error.message || '更改密码过程中发生未知错误，请稍后重试。'
+            };
+        }
     }
 
     /**

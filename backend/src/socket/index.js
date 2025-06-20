@@ -4,6 +4,7 @@ import { getSocketConfig } from '../config/index.js';
 
 const onlineUsers = new Map(); // socket.user.id -> Set of socket.id
 const activeServers = new Map(); // serverId (string) -> { members: Set of user.id (string), lastActivity: Date }
+const voiceSessions = new Map(); // Structure: Map<roomId, Map<socketId, {socketId: string, userId: string, username: string}>>
 
 let ioInstance = null;
 
@@ -204,7 +205,155 @@ export const initSocket = (httpServer) => {
                     }
                 }
             });
+
+            // Voice session cleanup on disconnect
+            const disconnectedSocketId = socket.id;
+            if (socket.user && socket.user.id && socket.user.username) { // Check if socket.user and its properties exist
+                const { id: disconnectedUserId, username: disconnectedUsername } = socket.user;
+                voiceSessions.forEach((roomVoiceSession, roomId) => {
+                    if (roomVoiceSession.has(disconnectedSocketId)) {
+                        roomVoiceSession.delete(disconnectedSocketId);
+                        console.log(`Socket: User ${disconnectedUsername} (socket: ${disconnectedSocketId}) removed from voice in room ${roomId} due to disconnect. Remaining: ${roomVoiceSession.size}`);
+
+                        // Notify remaining users in that voice room
+                        roomVoiceSession.forEach(peer => {
+                            io.to(peer.socketId).emit('voice:user_left', {
+                                socketId: disconnectedSocketId,
+                                userId: disconnectedUserId,
+                                username: disconnectedUsername
+                            });
+                        });
+
+                        if (roomVoiceSession.size === 0) {
+                            voiceSessions.delete(roomId);
+                            console.log(`Socket: Voice session for room ${roomId} is now empty due to disconnect.`);
+                        }
+                    }
+                });
+            } else {
+                // Fallback for cases where socket.user might not be fully populated
+                voiceSessions.forEach((roomVoiceSession, roomId) => {
+                    if (roomVoiceSession.has(disconnectedSocketId)) {
+                        const deletedPeer = roomVoiceSession.get(disconnectedSocketId); // Get peer info before deleting
+                        roomVoiceSession.delete(disconnectedSocketId);
+                        console.log(`Socket: User (socket: ${disconnectedSocketId}, details unknown/partial) removed from voice in room ${roomId} due to disconnect. Remaining: ${roomVoiceSession.size}`);
+                        // Notify remaining users, even if username is unknown
+                        roomVoiceSession.forEach(peer => {
+                            io.to(peer.socketId).emit('voice:user_left', {
+                                socketId: disconnectedSocketId,
+                                userId: deletedPeer?.userId || 'unknown',
+                                username: deletedPeer?.username || 'unknown'
+                            });
+                        });
+                        if (roomVoiceSession.size === 0) {
+                            voiceSessions.delete(roomId);
+                            console.log(`Socket: Voice session for room ${roomId} is now empty due to disconnect of user with unknown details.`);
+                        }
+                    }
+                });
+            } // End of voice session cleanup
+        }); // End of socket.on('disconnect')
+
+        // --- Voice Chat Event Handlers ---
+
+        socket.on('voice:join_room', (data) => {
+            const { roomId } = data;
+            // Assuming socket.user is populated by authentication middleware
+            if (!socket.user || !socket.user.id || !socket.user.username) {
+                socket.emit('voice:error', { message: 'User not properly authenticated for voice chat.' });
+                return;
+            }
+            const { id: userId, username } = socket.user;
+            const socketId = socket.id;
+
+            if (!roomId) {
+                socket.emit('voice:error', { message: 'Room ID is required to join voice chat.' });
+                return;
+            }
+            const currentRoomId = String(roomId); // Ensure consistent type for roomId
+
+            if (!voiceSessions.has(currentRoomId)) {
+                voiceSessions.set(currentRoomId, new Map());
+            }
+            const roomVoiceSession = voiceSessions.get(currentRoomId);
+
+            // Notify existing users about the new peer
+            // Note: peer.socketId is the correct field name from the planned structure
+            roomVoiceSession.forEach(peer => {
+                io.to(peer.socketId).emit('voice:user_joined', { socketId, userId, username });
+            });
+
+            // Send the list of existing users to the new peer
+            const existingUsers = Array.from(roomVoiceSession.values());
+            socket.emit('voice:active_users_in_room', { users: existingUsers });
+
+            // Add new peer to the session
+            // Storing socketId explicitly as part of the peer object for clarity
+            roomVoiceSession.set(socketId, { socketId, userId, username });
+            console.log(`Socket: User ${username} (socket: ${socketId}) joined voice in room ${currentRoomId}. Total in voice: ${roomVoiceSession.size}`);
         });
+
+        socket.on('voice:leave_room', (data) => {
+            const { roomId } = data;
+            if (!socket.user || !socket.user.id || !socket.user.username) {
+                // Should not happen if user was in a voice room, but good check
+                return;
+            }
+            const { id: userId, username } = socket.user;
+            const socketId = socket.id;
+            const currentRoomId = String(roomId);
+
+            if (voiceSessions.has(currentRoomId)) {
+                const roomVoiceSession = voiceSessions.get(currentRoomId);
+                if (roomVoiceSession.has(socketId)) {
+                    roomVoiceSession.delete(socketId);
+                    console.log(`Socket: User ${username} (socket: ${socketId}) left voice in room ${currentRoomId}. Remaining in voice: ${roomVoiceSession.size}`);
+
+                    // Notify remaining users
+                    roomVoiceSession.forEach(peer => {
+                        io.to(peer.socketId).emit('voice:user_left', { socketId, userId, username });
+                    });
+
+                    if (roomVoiceSession.size === 0) {
+                        voiceSessions.delete(currentRoomId);
+                        console.log(`Socket: Voice session for room ${currentRoomId} is now empty.`);
+                    }
+                }
+            }
+        });
+
+        socket.on('voice:send_signal', (data) => {
+            const { roomId, targetSocketId, signalType, sdp } = data;
+            const senderSocketId = socket.id;
+            const currentRoomId = String(roomId);
+
+            if (voiceSessions.has(currentRoomId) && voiceSessions.get(currentRoomId).has(targetSocketId)) {
+                io.to(targetSocketId).emit('voice:receive_signal', {
+                    senderSocketId,
+                    signalType,
+                    sdp
+                });
+            } else {
+                console.warn(`Socket: User ${socket.id} tried to send signal to ${targetSocketId} not in same voice room ${currentRoomId}`);
+                // socket.emit('voice:error', { message: `User ${targetSocketId} not found in voice room ${currentRoomId}.` });
+            }
+        });
+
+        socket.on('voice:send_ice_candidate', (data) => {
+            const { roomId, targetSocketId, candidate } = data;
+            const senderSocketId = socket.id;
+            const currentRoomId = String(roomId);
+
+            if (voiceSessions.has(currentRoomId) && voiceSessions.get(currentRoomId).has(targetSocketId)) {
+                 io.to(targetSocketId).emit('voice:receive_ice_candidate', {
+                    senderSocketId,
+                    candidate
+                });
+            } else {
+                console.warn(`Socket: User ${socket.id} tried to send ICE candidate to ${targetSocketId} not in same voice room ${currentRoomId}`);
+            }
+        });
+
     });
 
     return io;
