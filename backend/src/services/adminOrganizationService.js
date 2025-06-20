@@ -314,13 +314,18 @@ export async function listPublicOrganizations() {
             .order('name', { ascending: true });
 
         if (error) {
-            console.error('Error fetching public organizations:', error);
-            // Return the error object itself for more detailed client-side handling if needed
-            return { success: false, message: 'Failed to fetch public organizations.', error: error, status: 500 };
+            console.error('Error fetching public organizations:', error); // Keep this detailed log
+            let detailedMessage = 'Failed to fetch public organizations.';
+            // Check if the error message or code hints at RLS, though this is heuristic
+            if (error.message && (error.message.includes('permission denied') || error.message.includes('policy'))) {
+                detailedMessage += ' This might be due to Row Level Security (RLS) policies. Please check table permissions in Supabase.';
+            }
+            return { success: false, message: detailedMessage, error: error, status: 500 };
         }
         return { success: true, data: data || [], status: 200 };
     } catch (error) { // Catch unexpected errors
         console.error('Unexpected error in listPublicOrganizations:', error);
+        // Ensure the caught error is also passed along if it's different from a Supabase direct error
         return { success: false, message: 'An unexpected error occurred while fetching public organizations.', error: error, status: 500 };
     }
 }
