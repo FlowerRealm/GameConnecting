@@ -48,4 +48,21 @@ if [ $? -ne 0 ]; then
 fi
 echo "数据库 '$APP_DB_NAME' 已成功创建，所有者为 '$APP_DB_USER'。"
 
+echo "正在应用数据库迁移..."
+# Assuming reset_db.sh is in the project root, and backend is a subdirectory
+if [ -d "backend" ]; then
+    cd backend
+    if npm run db:migrate:up; then
+        echo "数据库迁移应用成功。"
+    else
+        echo "错误：数据库迁移失败。请检查 backend 目录中的日志或错误信息。"
+        cd .. # Go back to original directory before exiting
+        exit 1
+    fi
+    cd .. # Go back to original directory
+else
+    echo "错误：未找到 backend 目录。无法运行数据库迁移。"
+    exit 1
+fi
+
 echo "数据库重置完成。"

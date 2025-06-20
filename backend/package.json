@@ -10,7 +10,11 @@
         "dev": "npm run config:dev && nodemon server.js",
         "config:dev": "cross-env NODE_ENV=development node scripts/build-config.js",
         "config:prod": "cross-env NODE_ENV=production node scripts/build-config.js",
-        "build": "npm run config:prod"
+        "build": "npm run config:prod",
+        "db:migrate:create": "node-pg-migrate -m migrations --config migrate-pg-config.js create",
+        "db:migrate:up": "node-pg-migrate -m migrations --config migrate-pg-config.js up",
+        "db:migrate:down": "node-pg-migrate -m migrations --config migrate-pg-config.js down",
+        "db:migrate:status": "node-pg-migrate -m migrations --config migrate-pg-config.js status"
     },
     "author": "FlowerRealm <admin@flowerrealm.top>",
     "license": "ISC",
@@ -23,6 +27,7 @@
     },
     "devDependencies": {
         "cross-env": "^7.0.3",
+        "node-pg-migrate": "^8.0.3",
         "nodemon": "^3.1.10"
     }
 }

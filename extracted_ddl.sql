@@ -1,3 +1,17 @@
+-- ###################################################################################
+-- # IMPORTANT NOTE:                                                                 #
+-- # This file contains an extraction of the DDL schema as of a certain point in time. #
+-- # The database schema for this project is now actively managed by                 #
+-- # `node-pg-migrate`.                                                              #
+-- #                                                                                 #
+-- # Please refer to the migration scripts in the `backend/migrations` directory     #
+-- # for the authoritative schema definition and for making schema changes.          #
+-- #                                                                                 #
+-- # This file is kept for historical reference only.                                #
+-- # Do NOT apply this file manually to a database managed by migrations.            #
+-- ###################################################################################
+
+-- Original content of the file starts below...
 -- Function to automatically update 'updated_at' timestamps
 CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
 RETURNS TRIGGER AS $$
