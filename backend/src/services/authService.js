@@ -90,7 +90,7 @@ async function registerUser(email, password, username, note, requestedOrganizati
         };
 
     } catch (error) {
-        console.error('Unknown error in registerUser service:', error);
+        console.error('Unknown error in registerUser service:', error
         // If an authUserId was set, it means the auth user was created, try to clean up if something unexpected happened
         if (authUserId) {
             console.log(`Attempting to delete auth user ${authUserId} due to unknown error in registration process.`);
