@@ -33,9 +33,12 @@ export class AuthManager {
             }
             return result;
         } catch (error) {
+            // error here is likely the object thrown by apiService for non-ok responses,
+            // which includes statusCode and message from the server.
             return {
                 success: false,
-                message: '登录过程中发生错误，请稍后重试'
+                message: error.message || '登录过程中发生错误，请稍后重试', // Use specific message if available
+                statusCode: error.statusCode || null // Pass along statusCode if available
             };
         }
     }
