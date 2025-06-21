@@ -70,6 +70,7 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim(); // Get Email Value
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
     const note = document.getElementById('note')?.value?.trim();
@@ -79,6 +80,19 @@ form.addEventListener('submit', async (e) => {
 
     if (!username) {
         error.textContent = '请输入用户名';
+        error.style.display = 'block';
+        return;
+    }
+
+    // Client-Side Email Validation
+    if (!email) {
+        error.textContent = '请输入邮箱地址';
+        error.style.display = 'block';
+        return;
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+        error.textContent = '请输入有效的邮箱地址';
         error.style.display = 'block';
         return;
     }
@@ -117,11 +131,13 @@ form.addEventListener('submit', async (e) => {
         const selectedOrgCheckboxes = document.querySelectorAll('#organization-select-container input[name="organizationIds"]:checked');
         const requestedOrganizationIds = Array.from(selectedOrgCheckboxes).map(cb => cb.value);
 
+        // Include Email in Payload
         const result = await auth.register({
+            email,
             username,
             password,
             note,
-            requestedOrganizationIds // Add this new array
+            requestedOrganizationIds
         });
 
         if (result.success) {
