@@ -12,16 +12,17 @@ const router = express.Router();
 // POST /register - User registration
 router.post('/register', async (req, res) => {
     try {
-        const { email, password, username, note, requestedOrganizationIds } = req.body;
+        const { password, username, note, requestedOrganizationIds } = req.body; // Email removed
 
-        if (!email || !password || !username) {
-            return res.status(400).json({ success: false, message: '邮箱、密码和用户名不能为空' });
+        if (!password || !username) { // Email check removed
+            return res.status(400).json({ success: false, message: '密码和用户名不能为空' }); // Message updated
         }
         if (password.length < 6) {
             return res.status(400).json({ success: false, message: '密码长度至少为6位' });
         }
 
-        const result = await registerUser(email, password, username, note, requestedOrganizationIds || []);
+        // Email removed from service call
+        const result = await registerUser(password, username, note, requestedOrganizationIds || []);
 
         if (result.success) {
             res.status(201).json({

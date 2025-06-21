@@ -2,13 +2,17 @@ import { supabase } from '../supabaseClient.js';
 import { supabaseAdmin } from '../supabaseAdminClient.js'; // Added for admin operations
 
 // Service function for user registration
-async function registerUser(email, password, username, note, requestedOrganizationIds = []) {
+async function registerUser(password, username, note, requestedOrganizationIds = []) { // Email parameter removed
     let authUserId = null; // To store the ID of the created auth user for potential rollback
 
     try {
+        // Generate Placeholder Email
+        const normalizedUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const placeholderEmail = `${normalizedUsername}_${Date.now().toString().slice(-6)}@users.gameconnecting.local`;
+
         // Step 1: Sign up the user with Supabase Auth
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
-            email,
+            email: placeholderEmail, // Use generated placeholder email
             password,
         });
 

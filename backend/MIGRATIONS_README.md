@@ -62,3 +62,10 @@ The `reset_db.sh` script in the project root will:
 2.  Automatically run `npm run db:migrate:up` from the `backend` directory to apply all migrations to the fresh database.
 
 This ensures that a reset database is always up-to-date with the latest schema.
+
+## User Registration and Authentication Notes
+
+*   **Registration Method**: User registration is based on **username and password only**. Users do not provide an email address during sign-up.
+*   **Placeholder Emails**: To integrate with Supabase Auth (which requires an email for its user records), the backend automatically generates a unique, non-functional placeholder email for each user (e.g., `username_123456@users.gameconnecting.local`). This email is stored in Supabase's `auth.users` table but is not used for communication with the user.
+*   **Admin Approval**: All new user registrations are set to a 'pending' status. An administrator must approve these accounts (e.g., by updating the `status` field in the `public.user_profiles` table) before users can log in and fully use the application.
+*   **Password Recovery**: Due to the use of placeholder emails, standard Supabase email-based password recovery (e.g., "forgot password" links sent to email) **will not work**. If password recovery functionality is needed, it will require a custom implementation (e.g., an admin-driven password reset process).
