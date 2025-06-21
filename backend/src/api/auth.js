@@ -12,20 +12,16 @@ const router = express.Router();
 // POST /register - User registration
 router.post('/register', async (req, res) => {
     try {
-        console.log('[AuthAPI] /register route hit. Body received:', JSON.stringify(req.body, null, 2));
         const { password, username, note, requestedOrganizationIds } = req.body; // Email removed
 
-        console.log('[AuthAPI] Validating presence of password and username.');
         if (!password || !username) { // Email check removed
             return res.status(400).json({ success: false, message: '密码和用户名不能为空' }); // Message updated
         }
 
-        console.log('[AuthAPI] Validating password length.');
         if (password.length < 6) {
             return res.status(400).json({ success: false, message: '密码长度至少为6位' });
         }
 
-        console.log('[AuthAPI] Calling registerUser service with username:', username, 'password: [REDACTED]', 'note:', note, 'orgIds:', requestedOrganizationIds);
         // Email removed from service call
         const result = await registerUser(password, username, note, requestedOrganizationIds || []);
 
@@ -36,14 +32,12 @@ router.post('/register', async (req, res) => {
                 data: result.data
             });
         } else {
-            console.error('[AuthAPI] Error from registerUser service:', JSON.stringify(result.error, null, 2));
             res.status(result.error.status || 500).json({ success: false, message: result.error.message });
         }
     } catch (error) {
         // This catch block is for unexpected errors in the route handler itself,
         // or if the service throws an error not caught by its own try-catch.
         console.error('注册路由未知错误:', error); // Original log
-        console.error('[AuthAPI] Unexpected error in /register route:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         res.status(500).json({ success: false, message: `注册路由处理失败: ${error.message}` });
     }
 });

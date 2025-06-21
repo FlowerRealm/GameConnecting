@@ -8,7 +8,7 @@ async function registerUser(password, username, note, requestedOrganizationIds =
     try {
         // Generate Placeholder Email
         const normalizedUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        const placeholderEmail = `${normalizedUsername}_${Date.now().toString().slice(-6)}@users.gameconnecting.local`;
+        const placeholderEmail = `${normalizedUsername}_${Date.now().toString().slice(-6)}@internal.gameconnecting.link`;
 
         // Step 1: Sign up the user with Supabase Auth
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
