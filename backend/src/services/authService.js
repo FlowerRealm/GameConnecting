@@ -14,7 +14,7 @@ async function registerUser(password, username, note, requestedOrganizationIds =
         const { data: authData, error: adminUserError } = await supabaseAdmin.auth.admin.createUser({
             email: placeholderEmail,
             password: password,
-            // email_confirm: false, // Optional: set to false or omit
+            email_confirm: true // Add or set this to true
         });
 
         if (adminUserError) {
