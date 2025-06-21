@@ -56,7 +56,7 @@ export class AuthManager {
      */
     async register(userData) {
         try {
-            console.log('AuthManager.register: Sending userData:', JSON.stringify(userData, null, 2));
+            // console.log('AuthManager.register: Sending userData:', JSON.stringify(userData, null, 2)); // Removed
             const result = await this.apiService.request('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(userData)
@@ -111,19 +111,19 @@ export class AuthManager {
      * 检查用户是否已认证
      */
     isAuthenticated() {
-        console.log('[AuthManager] isAuthenticated: Called.');
+        // console.log('[AuthManager] isAuthenticated: Called.'); // Removed
         const token = this.getToken();
-        console.log('[AuthManager] isAuthenticated: Token from getToken():', token ? token.substring(0, 20) + '...' : null);
+        // console.log('[AuthManager] isAuthenticated: Token from getToken():', token ? token.substring(0, 20) + '...' : null); // Removed
 
         if (!token) {
-            console.log('[AuthManager] isAuthenticated: No token found, returning false.');
+            // console.log('[AuthManager] isAuthenticated: No token found, returning false.'); // Removed
             return false;
         }
 
         try {
             const parts = token.split('.');
             if (parts.length !== 3) {
-                console.log('[AuthManager] isAuthenticated: Invalid token structure, removing auth data.');
+                // console.log('[AuthManager] isAuthenticated: Invalid token structure, removing auth data.'); // Removed
                 this.#removeAuthData();
                 return false;
             }
@@ -134,27 +134,27 @@ export class AuthManager {
             }).join(''));
 
             const payload = JSON.parse(jsonPayload);
-            console.log('[AuthManager] isAuthenticated: Parsed JWT payload:', payload);
+            // console.log('[AuthManager] isAuthenticated: Parsed JWT payload:', payload); // Removed
 
             if (typeof payload.exp !== 'number') {
-                console.log('[AuthManager] isAuthenticated: Invalid expiry in token, removing auth data.');
+                // console.log('[AuthManager] isAuthenticated: Invalid expiry in token, removing auth data.'); // Removed
                 this.#removeAuthData();
                 return false;
             }
             const expiry = payload.exp * 1000;
             const now = Date.now();
-            console.log('[AuthManager] isAuthenticated: Token expiry:', new Date(expiry), 'Current time:', new Date(now));
-            console.log('[AuthManager] isAuthenticated: Time to expiry (ms):', expiry - now);
+            // console.log('[AuthManager] isAuthenticated: Token expiry:', new Date(expiry), 'Current time:', new Date(now)); // Removed
+            // console.log('[AuthManager] isAuthenticated: Time to expiry (ms):', expiry - now); // Removed
 
             if (expiry - Date.now() < 3600000) { // 1 hour
-                console.log('[AuthManager] isAuthenticated: Token nearing expiry, calling refreshToken().');
-                this.refreshToken().catch(e => console.error('[Auth] Refresh token error during isAuthenticated check:', e));
+                // console.log('[AuthManager] isAuthenticated: Token nearing expiry, calling refreshToken().'); // Removed
+                this.refreshToken().catch(() => {}); // Silenced catch
             }
             const isValid = expiry > now;
-            console.log('[AuthManager] isAuthenticated: Returning isValid:', isValid);
+            // console.log('[AuthManager] isAuthenticated: Returning isValid:', isValid); // Removed
             return isValid;
         } catch (error) {
-            console.error('[AuthManager] isAuthenticated: Error during token parsing or validation, removing auth data.', error);
+            // console.error('[AuthManager] isAuthenticated: Error during token parsing or validation, removing auth data.', error); // Removed
             this.#removeAuthData();
             return false;
         }
@@ -164,12 +164,12 @@ export class AuthManager {
      * 刷新认证令牌
      */
     async refreshToken() {
-        console.log('[AuthManager] refreshToken: Called.');
+        // console.log('[AuthManager] refreshToken: Called.'); // Removed
         try {
             const storedRefreshToken = localStorage.getItem(this.refreshTokenKey);
-            console.log('[AuthManager] refreshToken: Retrieved storedRefreshToken:', storedRefreshToken ? storedRefreshToken.substring(0, 20) + '...' : null);
+            // console.log('[AuthManager] refreshToken: Retrieved storedRefreshToken:', storedRefreshToken ? storedRefreshToken.substring(0, 20) + '...' : null); // Removed
             if (!storedRefreshToken) {
-                console.error('[AuthManager] refreshToken: No refresh token found for refreshing session.');
+                // console.error('[AuthManager] refreshToken: No refresh token found for refreshing session.'); // Removed
                 this.#removeAuthData(); // Clear all auth data if refresh token is missing
                 return false;
             }
@@ -178,12 +178,12 @@ export class AuthManager {
                 method: 'POST',
                 body: JSON.stringify({ refresh_token: storedRefreshToken })
             });
-            console.log('[AuthManager] refreshToken: API call result:', JSON.stringify(result, null, 2));
+            // console.log('[AuthManager] refreshToken: API call result:', JSON.stringify(result, null, 2)); // Removed
 
             // Check for apiService success, then backend success, then actual data presence
             if (result.success && result.data && result.data.success &&
                 result.data.data && result.data.data.access_token && result.data.data.refresh_token) {
-                console.log('[AuthManager] refreshToken: Refresh successful, saving new tokens.');
+                // console.log('[AuthManager] refreshToken: Refresh successful, saving new tokens.'); // Removed
                 this.#saveAuthData(
                     result.data.data.access_token, // Access nested data object
                     result.data.data.refresh_token, // Access nested data object
@@ -193,14 +193,14 @@ export class AuthManager {
                 return true;
             } else if (result.success && result.data && result.data.success) {
                 // HTTP success, backend success, but tokens missing in result.data.data
-                console.log('[AuthManager] refreshToken: Refresh API call successful (HTTP and backend logic) but token data missing in response payload:', result.data.data);
-                console.error('[AuthManager] refreshToken: Refresh API call successful (HTTP and backend logic) but token data missing in response payload:', result.data.data);
+                // console.log('[AuthManager] refreshToken: Refresh API call successful (HTTP and backend logic) but token data missing in response payload:', result.data.data); // Removed
+                // console.error('[AuthManager] refreshToken: Refresh API call successful (HTTP and backend logic) but token data missing in response payload:', result.data.data); // Removed
                 return false;
             } else if (result.success) {
                 // HTTP success, but backend logic failed (result.data.success is false)
                 // or result.data itself is not as expected.
-                console.log('[AuthManager] refreshToken: Refresh API call HTTP successful but backend indicated failure or unexpected backend response structure:', result.data);
-                console.error('[AuthManager] refreshToken: Refresh API call HTTP successful but backend indicated failure or unexpected backend response structure:', result.data);
+                // console.log('[AuthManager] refreshToken: Refresh API call HTTP successful but backend indicated failure or unexpected backend response structure:', result.data); // Removed
+                // console.error('[AuthManager] refreshToken: Refresh API call HTTP successful but backend indicated failure or unexpected backend response structure:', result.data); // Removed
                 // Potentially clear tokens here if backend says refresh failed, e.g. invalid refresh token
                 if (result.data && !result.data.success) {
                      this.#removeAuthData(); // If backend explicitly says refresh failed
@@ -212,7 +212,7 @@ export class AuthManager {
             // This specific return false should ideally not be reached if apiService always throws.
             return false;
         } catch (error) {
-            console.error('[AuthManager] refreshToken: Catch block. Error message:', error.message, 'Clearing tokens.');
+            // console.error('[AuthManager] refreshToken: Catch block. Error message:', error.message, 'Clearing tokens.'); // Removed
             // If refresh fails (e.g. 401 from backend if refresh token is invalid/expired),
             // consider the session ended and clear auth data.
             this.#removeAuthData();
@@ -224,9 +224,9 @@ export class AuthManager {
      * 保存认证数据
      */
     #saveAuthData(token, refreshToken, username, role) { // Added refreshToken parameter
-        console.log('[AuthManager] #saveAuthData: Saving access_token:', token ? token.substring(0, 20) + '...' : null);
-        console.log('[AuthManager] #saveAuthData: Saving refresh_token:', refreshToken ? refreshToken.substring(0, 20) + '...' : null);
-        console.log('[AuthManager] #saveAuthData: Saving username:', username);
+        // console.log('[AuthManager] #saveAuthData: Saving access_token:', token ? token.substring(0, 20) + '...' : null); // Removed
+        // console.log('[AuthManager] #saveAuthData: Saving refresh_token:', refreshToken ? refreshToken.substring(0, 20) + '...' : null); // Removed
+        // console.log('[AuthManager] #saveAuthData: Saving username:', username); // Removed
         if (token && this.tokenKey) {
             localStorage.setItem(this.tokenKey, token);
         }
@@ -244,7 +244,7 @@ export class AuthManager {
      * 移除认证数据
      */
     #removeAuthData() {
-        console.log('[AuthManager] #removeAuthData: Clearing all auth tokens and user info. Access token before clear:', localStorage.getItem(this.tokenKey) ? localStorage.getItem(this.tokenKey).substring(0,20)+'...' : null, 'Refresh token before clear:', localStorage.getItem(this.refreshTokenKey) ? localStorage.getItem(this.refreshTokenKey).substring(0,20)+'...' : null);
+        // console.log('[AuthManager] #removeAuthData: Clearing all auth tokens and user info. Access token before clear:', localStorage.getItem(this.tokenKey) ? localStorage.getItem(this.tokenKey).substring(0,20)+'...' : null, 'Refresh token before clear:', localStorage.getItem(this.refreshTokenKey) ? localStorage.getItem(this.refreshTokenKey).substring(0,20)+'...' : null); // Removed
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.usernameKey);
         localStorage.removeItem(this.refreshTokenKey); // Remove refresh token on logout
@@ -257,7 +257,7 @@ export class AuthManager {
      */
     getToken = () => {
         const token = localStorage.getItem(this.tokenKey);
-        console.log('[AuthManager] getToken: Retrieved access_token:', token ? token.substring(0, 20) + '...' : null);
+        // console.log('[AuthManager] getToken: Retrieved access_token:', token ? token.substring(0, 20) + '...' : null); // Removed
         return token;
     }
 
