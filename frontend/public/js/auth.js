@@ -105,15 +105,19 @@ export class AuthManager {
      * 检查用户是否已认证
      */
     isAuthenticated() {
+        console.log('[AuthManager] isAuthenticated: Called.');
         const token = this.getToken();
+        console.log('[AuthManager] isAuthenticated: Token from getToken():', token ? token.substring(0, 20) + '...' : null);
 
         if (!token) {
+            console.log('[AuthManager] isAuthenticated: No token found, returning false.');
             return false;
         }
 
         try {
             const parts = token.split('.');
             if (parts.length !== 3) {
+                console.log('[AuthManager] isAuthenticated: Invalid token structure, removing auth data.');
                 this.#removeAuthData();
                 return false;
             }
@@ -124,19 +128,27 @@ export class AuthManager {
             }).join(''));
 
             const payload = JSON.parse(jsonPayload);
+            console.log('[AuthManager] isAuthenticated: Parsed JWT payload:', payload);
 
             if (typeof payload.exp !== 'number') {
+                console.log('[AuthManager] isAuthenticated: Invalid expiry in token, removing auth data.');
                 this.#removeAuthData();
                 return false;
             }
             const expiry = payload.exp * 1000;
             const now = Date.now();
-            if (expiry - Date.now() < 3600000) {
-                this.refreshToken().catch(e => console.error('[Auth] Refresh token error:', e));
+            console.log('[AuthManager] isAuthenticated: Token expiry:', new Date(expiry), 'Current time:', new Date(now));
+            console.log('[AuthManager] isAuthenticated: Time to expiry (ms):', expiry - now);
+
+            if (expiry - Date.now() < 3600000) { // 1 hour
+                console.log('[AuthManager] isAuthenticated: Token nearing expiry, calling refreshToken().');
+                this.refreshToken().catch(e => console.error('[Auth] Refresh token error during isAuthenticated check:', e));
             }
             const isValid = expiry > now;
+            console.log('[AuthManager] isAuthenticated: Returning isValid:', isValid);
             return isValid;
         } catch (error) {
+            console.error('[AuthManager] isAuthenticated: Error during token parsing or validation, removing auth data.', error);
             this.#removeAuthData();
             return false;
         }
@@ -146,10 +158,12 @@ export class AuthManager {
      * 刷新认证令牌
      */
     async refreshToken() {
+        console.log('[AuthManager] refreshToken: Called.');
         try {
             const storedRefreshToken = localStorage.getItem(this.refreshTokenKey);
+            console.log('[AuthManager] refreshToken: Retrieved storedRefreshToken:', storedRefreshToken ? storedRefreshToken.substring(0, 20) + '...' : null);
             if (!storedRefreshToken) {
-                console.error('[Auth] No refresh token found for refreshing session.');
+                console.error('[AuthManager] refreshToken: No refresh token found for refreshing session.');
                 this.#removeAuthData(); // Clear all auth data if refresh token is missing
                 return false;
             }
@@ -158,8 +172,10 @@ export class AuthManager {
                 method: 'POST',
                 body: JSON.stringify({ refresh_token: storedRefreshToken })
             });
+            console.log('[AuthManager] refreshToken: API call result:', JSON.stringify(result, null, 2));
 
             if (result.success && result.data && result.data.access_token && result.data.refresh_token) {
+                console.log('[AuthManager] refreshToken: Refresh successful, saving new tokens.');
                 this.#saveAuthData(
                     result.data.access_token,
                     result.data.refresh_token,
@@ -168,17 +184,15 @@ export class AuthManager {
                 );
                 return true;
             } else if (result.success) { // Successful HTTP but missing tokens in data
-                console.error('[Auth] Refresh token API call successful but token data missing in response:', result.data);
+                console.log('[AuthManager] refreshToken: Refresh API call HTTP successful but token data missing in response.');
+                console.error('[AuthManager] refreshToken: Refresh API call successful but token data missing in response:', result.data); // duplicate console.error for emphasis
                 return false;
+            } else { // result.success is false from apiService but no error thrown (should be rare if apiService throws on non-ok)
+                 console.log('[AuthManager] refreshToken: API call indicated failure (result.success=false).');
+                 return false;
             }
-            // If result.success is false, apiService would have thrown if it's an HTTP error,
-            // or it's a structured {success: false, ...} response from backend already handled by apiService.
-            // If apiService throws, the catch block below will handle it.
-            // If apiService returns {success: false}, this path might be hit if not caught as an error by apiService.
-            // However, apiService is designed to throw for non-ok HTTP, so usually this path for !result.success is less common.
-            return false;
         } catch (error) {
-            console.error('[Auth] Error during refreshToken:', error.message || error);
+            console.error('[AuthManager] refreshToken: Catch block. Error message:', error.message, 'Clearing tokens.');
             // If refresh fails (e.g. 401 from backend if refresh token is invalid/expired),
             // consider the session ended and clear auth data.
             this.#removeAuthData();
@@ -190,6 +204,9 @@ export class AuthManager {
      * 保存认证数据
      */
     #saveAuthData(token, refreshToken, username, role) { // Added refreshToken parameter
+        console.log('[AuthManager] #saveAuthData: Saving access_token:', token ? token.substring(0, 20) + '...' : null);
+        console.log('[AuthManager] #saveAuthData: Saving refresh_token:', refreshToken ? refreshToken.substring(0, 20) + '...' : null);
+        console.log('[AuthManager] #saveAuthData: Saving username:', username);
         if (token && this.tokenKey) {
             localStorage.setItem(this.tokenKey, token);
         }
@@ -207,6 +224,7 @@ export class AuthManager {
      * 移除认证数据
      */
     #removeAuthData() {
+        console.log('[AuthManager] #removeAuthData: Clearing all auth tokens and user info. Access token before clear:', localStorage.getItem(this.tokenKey) ? localStorage.getItem(this.tokenKey).substring(0,20)+'...' : null, 'Refresh token before clear:', localStorage.getItem(this.refreshTokenKey) ? localStorage.getItem(this.refreshTokenKey).substring(0,20)+'...' : null);
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.usernameKey);
         localStorage.removeItem(this.refreshTokenKey); // Remove refresh token on logout
@@ -218,7 +236,9 @@ export class AuthManager {
      * 获取存储的 token
      */
     getToken = () => {
-        return localStorage.getItem(this.tokenKey);
+        const token = localStorage.getItem(this.tokenKey);
+        console.log('[AuthManager] getToken: Retrieved access_token:', token ? token.substring(0, 20) + '...' : null);
+        return token;
     }
 
     /**
