@@ -29,9 +29,15 @@ export class AuthManager {
             });
 
             // Corrected parsing of backend response structure
-            if (result.success && result.data && result.data.access_token) {
-                // Pass refresh_token to #saveAuthData
-                this.#saveAuthData(result.data.access_token, result.data.refresh_token, result.data.username, result.data.role);
+            // Check for apiService success, then backend success, then actual data presence
+            if (result.success && result.data && result.data.success && result.data.data && result.data.data.access_token) {
+                // Now correctly accessing the nested data object from the backend's response
+                this.#saveAuthData(
+                    result.data.data.access_token,
+                    result.data.data.refresh_token,
+                    result.data.data.username,
+                    result.data.data.role
+                );
             }
             return result;
         } catch (error) {
