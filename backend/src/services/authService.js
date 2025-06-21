@@ -10,24 +10,30 @@ async function registerUser(password, username, note, requestedOrganizationIds =
         const normalizedUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const placeholderEmail = `${normalizedUsername}_${Date.now().toString().slice(-6)}@no-reply.example.com`;
 
-        // Step 1: Sign up the user with Supabase Auth
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-            email: placeholderEmail, // Use generated placeholder email
-            password,
+        // Step 1: Create the user with Supabase Admin Auth
+        const { data: authData, error: adminUserError } = await supabaseAdmin.auth.admin.createUser({
+            email: placeholderEmail,
+            password: password,
+            // email_confirm: false, // Optional: set to false or omit
         });
 
-        if (signUpError) {
-            if (signUpError.message.includes('User already registered')) {
-                return { success: false, error: { status: 400, message: '该邮箱已被注册' } };
+        if (adminUserError) {
+            // Adapt error handling for createUser.
+            if (adminUserError.message && (adminUserError.message.toLowerCase().includes('email address already registered') ||
+                adminUserError.message && adminUserError.message.toLowerCase().includes('unique constraint failed') && adminUserError.message.toLowerCase().includes('email'))) {
+                console.error('Supabase Admin CreateUser Error (likely placeholder email collision):', adminUserError);
+                return { success: false, error: { status: 400, message: '注册失败，生成的占位邮箱已存在或与现有用户冲突。' } };
             }
-            console.error('Supabase SignUp Error in service:', signUpError);
-            return { success: false, error: { status: signUpError.status || 500, message: signUpError.message || '注册Auth用户失败' } };
+            console.error('Supabase Admin CreateUser Error:', adminUserError);
+            return { success: false, error: { status: adminUserError.status || 500, message: adminUserError.message || '通过Admin API创建Auth用户失败' } };
         }
 
-        if (!authData.user) {
-            return { success: false, error: { status: 500, message: '用户注册成功但未返回用户信息。可能需要邮件确认。' } };
+        // Ensure authData and authData.user exist
+        if (!authData || !authData.user) {
+            console.error('Admin CreateUser response missing user data:', authData);
+            return { success: false, error: { status: 500, message: '通过Admin API创建用户成功但未返回用户信息。' } };
         }
-        authUserId = authData.user.id; // Store auth user ID for potential rollback
+        authUserId = authData.user.id; // Get user ID
 
         // Step 2: Insert user profile
         const { error: profileError } = await supabase
