@@ -32,7 +32,8 @@ const allowedOrigins = [
   'https://game.flowerrealm.top', // Production frontend
   'https://game-connecting-git-backend-refa-bf604e-flowercountrys-projects.vercel.app', // Vercel preview/branch URL for frontend
   'http://localhost:12000',       // Local development for frontend
-  'http://127.0.0.1:12000'      // Local development alias for frontend
+  'http://127.0.0.1:12000',      // Local development alias for frontend
+  'https://game-connecting.vercel.app' // New URL added
 ];
 
 // CORS options
