@@ -180,23 +180,37 @@ export class AuthManager {
             });
             console.log('[AuthManager] refreshToken: API call result:', JSON.stringify(result, null, 2));
 
-            if (result.success && result.data && result.data.access_token && result.data.refresh_token) {
+            // Check for apiService success, then backend success, then actual data presence
+            if (result.success && result.data && result.data.success &&
+                result.data.data && result.data.data.access_token && result.data.data.refresh_token) {
                 console.log('[AuthManager] refreshToken: Refresh successful, saving new tokens.');
                 this.#saveAuthData(
-                    result.data.access_token,
-                    result.data.refresh_token,
-                    result.data.username,
-                    result.data.role
+                    result.data.data.access_token, // Access nested data object
+                    result.data.data.refresh_token, // Access nested data object
+                    result.data.data.username,      // Access nested data object
+                    result.data.data.role           // Access nested data object
                 );
                 return true;
-            } else if (result.success) { // Successful HTTP but missing tokens in data
-                console.log('[AuthManager] refreshToken: Refresh API call HTTP successful but token data missing in response.');
-                console.error('[AuthManager] refreshToken: Refresh API call successful but token data missing in response:', result.data); // duplicate console.error for emphasis
+            } else if (result.success && result.data && result.data.success) {
+                // HTTP success, backend success, but tokens missing in result.data.data
+                console.log('[AuthManager] refreshToken: Refresh API call successful (HTTP and backend logic) but token data missing in response payload:', result.data.data);
+                console.error('[AuthManager] refreshToken: Refresh API call successful (HTTP and backend logic) but token data missing in response payload:', result.data.data);
                 return false;
-            } else { // result.success is false from apiService but no error thrown (should be rare if apiService throws on non-ok)
-                 console.log('[AuthManager] refreshToken: API call indicated failure (result.success=false).');
-                 return false;
+            } else if (result.success) {
+                // HTTP success, but backend logic failed (result.data.success is false)
+                // or result.data itself is not as expected.
+                console.log('[AuthManager] refreshToken: Refresh API call HTTP successful but backend indicated failure or unexpected backend response structure:', result.data);
+                console.error('[AuthManager] refreshToken: Refresh API call HTTP successful but backend indicated failure or unexpected backend response structure:', result.data);
+                // Potentially clear tokens here if backend says refresh failed, e.g. invalid refresh token
+                if (result.data && !result.data.success) {
+                     this.#removeAuthData(); // If backend explicitly says refresh failed
+                }
+                return false;
             }
+            // If result.success is false (HTTP error), apiService would have thrown,
+            // and the catch block below handles it by calling #removeAuthData.
+            // This specific return false should ideally not be reached if apiService always throws.
+            return false;
         } catch (error) {
             console.error('[AuthManager] refreshToken: Catch block. Error message:', error.message, 'Clearing tokens.');
             // If refresh fails (e.g. 401 from backend if refresh token is invalid/expired),
