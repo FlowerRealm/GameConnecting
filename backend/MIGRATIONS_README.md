@@ -66,6 +66,7 @@ This ensures that a reset database is always up-to-date with the latest schema.
 ## User Registration and Authentication Notes
 
 *   **Registration Method**: User registration is based on **username and password only**. Users do not provide an email address during sign-up.
-*   **Placeholder Emails**: To integrate with Supabase Auth (which requires an email for its user records), the backend automatically generates a unique, non-functional placeholder email for each user (e.g., `username_123456@users.gameconnecting.local`). This email is stored in Supabase's `auth.users` table but is not used for communication with the user.
+*   **Login Method**: User login is based on **username and password**. The system internally looks up the placeholder email associated with the username to authenticate with Supabase.
+*   **Placeholder Emails**: To integrate with Supabase Auth (which requires an email for its user records), the backend automatically generates a unique, non-functional placeholder email for each user (e.g., `username_suffix@no-reply.example.com`). This email is stored in Supabase's `auth.users` table but is not used for communication with the user.
 *   **Admin Approval**: All new user registrations are set to a 'pending' status. An administrator must approve these accounts (e.g., by updating the `status` field in the `public.user_profiles` table) before users can log in and fully use the application.
 *   **Password Recovery**: Due to the use of placeholder emails, standard Supabase email-based password recovery (e.g., "forgot password" links sent to email) **will not work**. If password recovery functionality is needed, it will require a custom implementation (e.g., an admin-driven password reset process).

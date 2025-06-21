@@ -45,12 +45,12 @@ router.post('/register', async (req, res) => {
 // POST /login - User login
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: '邮箱和密码不能为空' });
+        const { username, password } = req.body; // Changed 'email' to 'username'
+        if (!username || !password) { // Changed 'email' to 'username'
+            return res.status(400).json({ success: false, message: '用户名和密码不能为空' }); // Updated message
         }
 
-        const result = await loginUser(email, password);
+        const result = await loginUser(username, password); // Changed 'email' to 'username'
 
         if (result.success) {
             res.json({

@@ -116,19 +116,49 @@ async function registerUser(password, username, note, requestedOrganizationIds =
 }
 
 // Service function for user login
-async function loginUser(email, password) {
+async function loginUser(username, password) { // Changed 'email' to 'username'
     try {
-        // Step 1: Sign in with Supabase Auth
+        // Step 1: Look up user profile by username to get their auth ID
+        const { data: profileForEmailLookup, error: profileLookupError } = await supabase
+            .from('user_profiles')
+            .select('id') // Select the auth user ID
+            .eq('username', username)
+            .single();
+
+        if (profileLookupError || !profileForEmailLookup) {
+            console.error('Login: User profile not found for username:', username, 'Error:', profileLookupError);
+            // Generic message for security, don't reveal if username exists or not
+            return { success: false, error: { status: 401, message: '用户名或密码错误' } };
+        }
+
+        const userId = profileForEmailLookup.id;
+
+        // Step 2: Fetch the auth user's details (including placeholder email) using the admin client
+        const { data: authUserResponse, error: adminUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+        if (adminUserError || !authUserResponse || !authUserResponse.user) {
+            console.error('Login: Could not fetch auth user details for ID:', userId, 'Error:', adminUserError);
+            return { success: false, error: { status: 500, message: '登录时获取用户认证信息失败' } };
+        }
+
+        const placeholderEmail = authUserResponse.user.email;
+        if (!placeholderEmail) {
+            console.error('Login: Placeholder email not found for user ID:', userId);
+            return { success: false, error: { status: 500, message: '登录时用户占位邮箱信息缺失' } };
+        }
+
+        // Step 3: Sign in with Supabase Auth using the retrieved placeholder email
         const { data: authResponse, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
+            email: placeholderEmail, // Use the retrieved placeholder email
             password,
         });
 
         if (signInError) {
             if (signInError.message === 'Invalid login credentials') {
-                return { success: false, error: { status: 401, message: '邮箱或密码错误' } };
+                // This message now refers to the (placeholderEmail, password) pair
+                return { success: false, error: { status: 401, message: '用户名或密码错误' } }; // Updated message
             }
-            console.error('Supabase SignIn Error in service:', signInError);
+            console.error('Supabase SignIn Error in service (using placeholder email):', signInError);
             return { success: false, error: { status: signInError.status || 500, message: signInError.message || '登录Auth失败' } };
         }
 
@@ -136,22 +166,26 @@ async function loginUser(email, password) {
             return { success: false, error: { status: 401, message: '登录失败，未获取到用户信息或会话' } };
         }
 
-        // Step 2: Fetch user profile
+        // Step 4: Fetch user profile (using the ID from successful sign-in)
+        // This remains largely the same as before, as authResponse.user.id is reliable after successful signInWithPassword
         const { data: userProfile, error: profileError } = await supabase
             .from('user_profiles')
-            .select('username, role, status')
+            .select('username, role, status') // Ensure 'username' is selected here if you need to return it
             .eq('id', authResponse.user.id)
             .single();
 
         if (profileError) {
-            console.error('Error fetching user profile in login service:', profileError);
+            console.error('Error fetching user profile in login service (after sign-in):', profileError);
             return { success: false, error: { status: 500, message: '获取用户配置信息失败' } };
         }
         if (!userProfile) {
+            // This should ideally not happen if the user was able to sign in with Supabase Auth
+            // and a profile was created during registration.
+            console.error('Login: User profile not found after successful sign-in for ID:', authResponse.user.id);
             return { success: false, error: { status: 403, message: '用户配置信息不存在，请联系管理员' } };
         }
 
-        // Step 3: Check user status
+        // Step 5: Check user status
         if (userProfile.status !== 'active') {
             let message = '您的账号状态异常，请联系管理员';
             if (userProfile.status === 'pending') message = '您的账号正在等待管理员审核';
@@ -165,9 +199,9 @@ async function loginUser(email, password) {
             data: {
                 access_token: authResponse.session.access_token,
                 refresh_token: authResponse.session.refresh_token,
-                username: userProfile.username,
+                username: userProfile.username, // Return the actual username from the profile
                 role: userProfile.role,
-                userId: authResponse.user.id,
+                userId: authResponse.user.id, // This is the Supabase Auth User ID (UUID)
                 expires_at: authResponse.session.expires_at
             }
         };

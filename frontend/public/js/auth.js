@@ -20,11 +20,11 @@ export class AuthManager {
     /**
      * 登录
      */
-    async login(email, password) {
+    async login(username, password) { // Changed 'email' to 'username'
         try {
             const result = await this.apiService.request('/auth/login', {
                 method: 'POST',
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ username, password }) // Changed 'email' to 'username'
             });
 
             // Corrected parsing of backend response structure
