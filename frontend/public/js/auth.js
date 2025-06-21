@@ -8,6 +8,7 @@ export class AuthManager {
         this.apiService = apiService;
         this.tokenKey = 'gameconnecting_token';
         this.usernameKey = 'gameconnecting_username';
+        this.refreshTokenKey = 'gameconnecting_refresh_token'; // Added refresh token key
     }
 
     static getInstance() {
@@ -29,7 +30,8 @@ export class AuthManager {
 
             // Corrected parsing of backend response structure
             if (result.success && result.data && result.data.access_token) {
-                this.#saveAuthData(result.data.access_token, result.data.username, result.data.role);
+                // Pass refresh_token to #saveAuthData
+                this.#saveAuthData(result.data.access_token, result.data.refresh_token, result.data.username, result.data.role);
             }
             return result;
         } catch (error) {
@@ -145,16 +147,41 @@ export class AuthManager {
      */
     async refreshToken() {
         try {
+            const storedRefreshToken = localStorage.getItem(this.refreshTokenKey);
+            if (!storedRefreshToken) {
+                console.error('[Auth] No refresh token found for refreshing session.');
+                this.#removeAuthData(); // Clear all auth data if refresh token is missing
+                return false;
+            }
+
             const result = await this.apiService.request('/auth/refresh', {
-                method: 'POST'
+                method: 'POST',
+                body: JSON.stringify({ refresh_token: storedRefreshToken })
             });
 
-            if (result.success && result.data?.token) {
-                this.#saveAuthData(result.data.token, result.data.username);
+            if (result.success && result.data && result.data.access_token && result.data.refresh_token) {
+                this.#saveAuthData(
+                    result.data.access_token,
+                    result.data.refresh_token,
+                    result.data.username,
+                    result.data.role
+                );
                 return true;
+            } else if (result.success) { // Successful HTTP but missing tokens in data
+                console.error('[Auth] Refresh token API call successful but token data missing in response:', result.data);
+                return false;
             }
+            // If result.success is false, apiService would have thrown if it's an HTTP error,
+            // or it's a structured {success: false, ...} response from backend already handled by apiService.
+            // If apiService throws, the catch block below will handle it.
+            // If apiService returns {success: false}, this path might be hit if not caught as an error by apiService.
+            // However, apiService is designed to throw for non-ok HTTP, so usually this path for !result.success is less common.
             return false;
         } catch (error) {
+            console.error('[Auth] Error during refreshToken:', error.message || error);
+            // If refresh fails (e.g. 401 from backend if refresh token is invalid/expired),
+            // consider the session ended and clear auth data.
+            this.#removeAuthData();
             return false;
         }
     }
@@ -162,9 +189,12 @@ export class AuthManager {
     /**
      * 保存认证数据
      */
-    #saveAuthData(token, username, role) {
+    #saveAuthData(token, refreshToken, username, role) { // Added refreshToken parameter
         if (token && this.tokenKey) {
             localStorage.setItem(this.tokenKey, token);
+        }
+        if (refreshToken && this.refreshTokenKey) { // Store refresh token
+            localStorage.setItem(this.refreshTokenKey, refreshToken);
         }
         if (username && this.usernameKey) localStorage.setItem(this.usernameKey, username);
 
@@ -179,6 +209,7 @@ export class AuthManager {
     #removeAuthData() {
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.usernameKey);
+        localStorage.removeItem(this.refreshTokenKey); // Remove refresh token on logout
         store.clearState();
         window.dispatchEvent(new CustomEvent('auth:logout'));
     }
