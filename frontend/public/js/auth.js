@@ -45,6 +45,7 @@ export class AuthManager {
      */
     async register(userData) {
         try {
+            console.log('AuthManager.register: Sending userData:', JSON.stringify(userData, null, 2));
             const result = await this.apiService.request('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(userData)
