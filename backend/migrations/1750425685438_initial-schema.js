@@ -11,7 +11,7 @@ export const shorthands = undefined;
 export const up = async (pgm) => {
   // Function trigger_set_timestamp
   await pgm.sql(`
-    CREATE FUNCTION public.trigger_set_timestamp()
+    CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
     RETURNS TRIGGER AS $$
     BEGIN
       NEW.updated_at = NOW();
