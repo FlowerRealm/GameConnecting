@@ -2,7 +2,7 @@
 require('dotenv').config({ path: '.env.development' }); // Or your relevant .env file
 
 module.exports = {
-  databaseUrl: process.env.LOCAL_DB_URL, // e.g., postgresql://gameconnecting:YOUR_PASSWORD@localhost:5432/gameconnecting
+  databaseUrl: process.env.DATABASE_URL || process.env.LOCAL_DB_URL, // e.g., postgresql://gameconnecting:YOUR_PASSWORD@localhost:5432/gameconnecting
   // OR individual parameters (node-pg-migrate prefers databaseUrl if present)
   // host: process.env.LOCAL_DB_HOST || 'localhost',
   // port: parseInt(process.env.LOCAL_DB_PORT) || 5432,

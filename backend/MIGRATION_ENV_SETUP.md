@@ -1,12 +1,24 @@
 # Migration Environment Setup
 
-To run database migrations using `node-pg-migrate`, you need to ensure the following environment variables are set, typically in your `backend/.env.development` or a dedicated `.env` file that `migrate-pg-config.js` can load.
+Database migrations are configured in `backend/migrate-pg-config.js`. This configuration prioritizes connection settings using environment variables. Ensure these are set in your `backend/.env.development` or a similar `.env` file loaded by `dotenv` in `migrate-pg-config.js`.
 
-These should point to your **local PostgreSQL instance** that `reset_db.sh` targets.
+## Priority 1: `DATABASE_URL` (For Hosted Environments like Render)
 
-## Option 1: Using `LOCAL_DB_URL` (Recommended)
+If a `DATABASE_URL` environment variable is set, `node-pg-migrate` will use this connection string.
+Hosting platforms like Render often provide this variable automatically for their managed database services.
+It should be a complete PostgreSQL connection string, e.g.:
+```
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+```
+**If `DATABASE_URL` is present, it will override `LOCAL_DB_URL` and individual local parameters for the main `databaseUrl` setting in `node-pg-migrate`.**
 
-Set the `LOCAL_DB_URL` in your `backend/.env.development` (or a new `.env` file loaded by `dotenv` in `migrate-pg-config.js`):
+---
+
+## Priority 2: `LOCAL_DB_URL` (For Local Development when `DATABASE_URL` is not set)
+
+If `DATABASE_URL` is NOT set, `node-pg-migrate` will then look for `LOCAL_DB_URL`.
+This is intended for your **local PostgreSQL instance** (the one targeted by `reset_db.sh`).
+Set the `LOCAL_DB_URL` in your `backend/.env.development` (or a similar `.env` file):
 
 ```
 LOCAL_DB_URL=postgresql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_NAME
@@ -24,9 +36,9 @@ Example `LOCAL_DB_URL` if `gameconnecting` user has password `mysecretpassword`:
 LOCAL_DB_URL=postgresql://gameconnecting:mysecretpassword@localhost:5432/gameconnecting
 ```
 
-## Option 2: Using Individual Parameters (Alternative)
+## Using Individual Parameters (Local Development - Alternative to `LOCAL_DB_URL` when `DATABASE_URL` is not set)
 
-If you don't use `LOCAL_DB_URL`, `node-pg-migrate` can use individual parameters. You would need to uncomment them in `migrate-pg-config.js` and set them in your environment:
+If neither `DATABASE_URL` nor `LOCAL_DB_URL` are set, `node-pg-migrate` can use individual parameters for your **local PostgreSQL instance**. You would need to uncomment them in `migrate-pg-config.js` and set them in your environment:
 
 ```
 LOCAL_DB_HOST=localhost
