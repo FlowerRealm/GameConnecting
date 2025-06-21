@@ -118,6 +118,7 @@ async function registerUser(password, username, note, requestedOrganizationIds =
 // Service function for user login
 async function loginUser(username, password) { // Changed 'email' to 'username'
     try {
+        console.log(`[AuthService-Login] loginUser called with username: "${username}", password: [REDACTED]`);
         // Step 1: Look up user profile by username to get their auth ID
         const { data: profileForEmailLookup, error: profileLookupError } = await supabase
             .from('user_profiles')
@@ -125,6 +126,7 @@ async function loginUser(username, password) { // Changed 'email' to 'username'
             .eq('username', username)
             .single();
 
+        console.log('[AuthService-Login] Profile lookup for username result:', JSON.stringify({ data: profileForEmailLookup, error: profileLookupError }, null, 2));
         if (profileLookupError || !profileForEmailLookup) {
             console.error('Login: User profile not found for username:', username, 'Error:', profileLookupError);
             // Generic message for security, don't reveal if username exists or not
@@ -132,21 +134,25 @@ async function loginUser(username, password) { // Changed 'email' to 'username'
         }
 
         const userId = profileForEmailLookup.id;
+        console.log('[AuthService-Login] Found userId from profile:', userId);
 
         // Step 2: Fetch the auth user's details (including placeholder email) using the admin client
         const { data: authUserResponse, error: adminUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
 
+        console.log('[AuthService-Login] Admin getUserById result:', JSON.stringify({ data: authUserResponse, error: adminUserError }, (key, value) => (key === 'user' && value && value.identities) ? '...identities_redacted...' : value, 2));
         if (adminUserError || !authUserResponse || !authUserResponse.user) {
             console.error('Login: Could not fetch auth user details for ID:', userId, 'Error:', adminUserError);
             return { success: false, error: { status: 500, message: '登录时获取用户认证信息失败' } };
         }
 
         const placeholderEmail = authUserResponse.user.email;
+        console.log('[AuthService-Login] Placeholder email found from auth user:', placeholderEmail);
         if (!placeholderEmail) {
             console.error('Login: Placeholder email not found for user ID:', userId);
             return { success: false, error: { status: 500, message: '登录时用户占位邮箱信息缺失' } };
         }
 
+        console.log(`[AuthService-Login] Attempting signInWithPassword with placeholderEmail: "${placeholderEmail}" and password: [REDACTED]`);
         // Step 3: Sign in with Supabase Auth using the retrieved placeholder email
         const { data: authResponse, error: signInError } = await supabase.auth.signInWithPassword({
             email: placeholderEmail, // Use the retrieved placeholder email
@@ -174,6 +180,7 @@ async function loginUser(username, password) { // Changed 'email' to 'username'
             .eq('id', authResponse.user.id)
             .single();
 
+        console.log('[AuthService-Login] Post-signin profile fetch result:', JSON.stringify({ data: userProfile, error: profileError }, null, 2));
         if (profileError) {
             console.error('Error fetching user profile in login service (after sign-in):', profileError);
             return { success: false, error: { status: 500, message: '获取用户配置信息失败' } };
@@ -194,6 +201,7 @@ async function loginUser(username, password) { // Changed 'email' to 'username'
             return { success: false, error: { status: 403, message } };
         }
 
+        console.log(`[AuthService-Login] Login successful for username: "${userProfile?.username}", returning data.`);
         return {
             success: true,
             data: {

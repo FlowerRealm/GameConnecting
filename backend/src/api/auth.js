@@ -45,13 +45,16 @@ router.post('/register', async (req, res) => {
 // POST /login - User login
 router.post('/login', async (req, res) => {
     try {
+        console.log('[LoginAPI] /login route hit. Body:', JSON.stringify(req.body, null, 2));
         const { username, password } = req.body; // Changed 'email' to 'username'
         if (!username || !password) { // Changed 'email' to 'username'
             return res.status(400).json({ success: false, message: '用户名和密码不能为空' }); // Updated message
         }
 
+        console.log('[LoginAPI] Calling loginUser service with username:', username);
         const result = await loginUser(username, password); // Changed 'email' to 'username'
 
+        console.log('[LoginAPI] Result from loginUser service:', JSON.stringify(result, null, 2));
         if (result.success) {
             res.json({
                 success: true,
@@ -59,10 +62,12 @@ router.post('/login', async (req, res) => {
                 data: result.data
             });
         } else {
+            console.error('[LoginAPI] Error received from loginUser service:', JSON.stringify(result.error, null, 2));
             res.status(result.error.status || 500).json({ success: false, message: result.error.message });
         }
     } catch (error) {
-        console.error('登录路由未知错误:', error);
+        console.error('登录路由未知错误:', error); // Original log
+        console.error('[LoginAPI] Unexpected error in /login route:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         res.status(500).json({ success: false, message: `登录路由处理失败: ${error.message}` });
     }
 });
