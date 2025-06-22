@@ -34,37 +34,35 @@ GameConnecting is a platform designed to facilitate real-time connections for ga
     *   User creation via `supabaseAdmin.auth.admin.createUser()` with `email_confirm: true`.
     *   Login with username and password; backend translates username to placeholder email for Supabase sign-in.
     *   JWT-based session management (access and refresh tokens handled by `AuthManager.js`).
-    *   Role system: 'admin' and 'user' roles stored in `user_profiles` and used for UI/navigation.
+    *   Role system: 'admin' and 'user' roles stored in `user_profiles` and used for UI/navigation (role storage in `AuthManager` complete; UI updates in progress).
     *   Admin approval required for new accounts (users created with `status: 'pending'`).
 *   **User Profiles (`profile.html`)**:
-    *   Users can manage some aspects of their profile (e.g., password change).
+    *   Users can manage their password.
     *   Displays user's organization memberships.
 *   **Friendship System (`friends.html`)**:
-    *   Basic structure and APIs likely in place (`friends.js`, `api/friends.js`). Functionality details not fully explored in recent tasks.
+    *   Basic structure and APIs are in place (`friends.js`, `api/friends.js`). Detailed functionality requires further exploration.
 *   **Organizations (Multi-Organization Features)**:
-    *   Phase 2 of this feature was recently completed.
     *   Admins can manage organizations and user memberships within them (`admin.html`).
     *   Users can view their own organization memberships (`profile.html`).
-    *   Backend API and services exist for organization and membership management (`api/adminOrganizations.js`, `api/organizations.js`).
+    *   Backend API and services exist for organization and membership management.
 *   **Rooms/Servers (Chat Rooms)**:
-    *   Conceptual shift from "game servers" to more general "rooms".
-    *   Users can create rooms (name, description; type defaults to 'public'). Endpoint `POST /api/rooms/create`.
-    *   Users can list public rooms. Endpoint `GET /api/rooms/list`. Called by `servers.js`.
-    *   Users can join/leave rooms, view members. Backend APIs for these exist (`api/rooms.js`).
+    *   Users can create rooms (name, description; type defaults to 'public') via `POST /api/rooms/create`.
+    *   Users can list public rooms via `GET /api/rooms/list` (used by `servers.js`).
+    *   Backend APIs for joining/leaving rooms and viewing members are available.
     *   Frontend display of rooms on `servers.html` via `servers.js`.
 *   **Real-time Chat (`chat.html`, `socket/index.js`)**:
     *   Socket.IO is initialized on the backend server.
-    *   Basic chat page HTML exists. Full feature integration and security (e.g., JWT auth for sockets) might be ongoing or pending (as per `PROGRESS.md`).
+    *   Basic chat page HTML exists. Full feature integration (e.g., message handling, JWT auth for sockets) is likely developmental or pending.
 *   **Admin Panel (`admin.html`)**:
-    *   User management (listing users, potentially changing roles/status - exact features explored partially).
-    *   Organization management (listing orgs, members, assigning org roles - Phase 2).
+    *   User management functionalities.
+    *   Organization management features (listing orgs, members, role assignments).
 
 ## 4. Authentication Flow Detailed
 
 *   **Registration**:
     1.  User submits `username` and `password` via frontend.
     2.  Backend `api/auth.js` (`/register`) receives these.
-    3.  `authService.registerUser` generates `placeholderEmail = \`\${normalizedUsername}_<timestampSuffix>@no-reply.example.com\``.
+    3.  `authService.registerUser` generates `placeholderEmail = \`${normalizedUsername}_<timestampSuffix>@no-reply.example.com\``.
     4.  `supabaseAdmin.auth.admin.createUser({ email: placeholderEmail, password, email_confirm: true })` is called.
     5.  If successful, a new record is inserted into `public.user_profiles` with the actual `username` and `status: 'pending'`, linked to the Supabase auth user ID.
 *   **Login**:
@@ -122,7 +120,82 @@ GameConnecting is a platform designed to facilitate real-time connections for ga
     *   Page-specific JS files (e.g., `login.js`, `register.js`, `servers.js`, `admin.js`).
 *   Static Server: `frontend/webServer.js` (Node.js/Express) serves the `frontend/public` directory.
 
-## 8. Build & Deployment
+## 8. File and Directory Inventory
+
+This inventory provides an overview of key files and directories within the GameConnecting project structure.
+
+### Root Directory (`/`)
+
+*   `.gitignore`: Specifies intentionally untracked files that Git should ignore.
+*   `AGENTS.md`: This document, providing an evolving understanding of the project.
+*   `DEPLOYMENT_SUMMARY.md`: Summarizes deployment configurations and procedures.
+*   `PROGRESS.md`: Tracks project progress, completed tasks, and outlines future plans.
+*   `README.md`: Main project readme, offering an overview and setup instructions for developers.
+*   `TODO_ORGANIZATION_FEATURE_PHASE2.md`: (Historical) Specific todos for the recently completed Phase 2 of the organization feature.
+*   `backend/`: Contains all backend server-side code, services, and API logic.
+*   `frontend/`: Contains all frontend client-side code, HTML pages, and static assets.
+*   `package.json`: Root Node.js project file, defines dependencies (e.g., `concurrently`) and scripts for managing both frontend and backend development environments together.
+*   `package-lock.json`: Records exact versions of dependencies for reproducible installs at the root level.
+*   `reset_db.sh`: Shell script designed to drop and recreate the local PostgreSQL database, now also triggers database migrations.
+*   `switch-env.sh`: Shell script likely used for switching between different environment configuration files (e.g., development, production).
+*   `extracted_ddl.sql`: A snapshot of the database schema DDL, now marked as historical as the schema is managed by `node-pg-migrate`.
+
+### `backend/` Directory
+
+*   `.env`, `.env.development`, `.env.production`: Environment variable files for different backend environments (Supabase keys, API keys, database connection strings for the application, etc.). `FRONTEND_URL` is also set here.
+*   `MIGRATIONS_README.md`: Documentation for using the `node-pg-migrate` database migration system.
+*   `MIGRATION_ENV_SETUP.md`: Instructions for setting up local environment variables required for database migrations (e.g., `DATABASE_URL`, `LOCAL_DB_URL`).
+*   `migrate-pg-config.js`: Configuration file for `node-pg-migrate`, specifying database connection details (prioritizing `DATABASE_URL`) and migration settings.
+*   `migrations/`: Directory containing all database migration scripts (e.g., `1750425685438_initial-schema.js`).
+*   `package.json`: Backend-specific Node.js project file, listing dependencies like `express`, `@supabase/supabase-js`, `cors`, `dotenv`, `socket.io`, and devDependencies such as `nodemon`, `cross-env`, `node-pg-migrate`.
+*   `scripts/`: Utility scripts for the backend.
+    *   `build-config.js`: Generates `src/config.js` from environment variables for runtime configuration.
+    *   `dump-db.js`: Likely a script for creating database backups or dumps.
+    *   `setup-supabase-tables.js`: **(Potentially Unused)** An older script, possibly for initial table setup, likely superseded by the `node-pg-migrate` system.
+*   `server.js`: The main entry point for the backend Express.js server. It initializes middleware (CORS, JSON parsing, authentication), sets up API routes, and starts the HTTP and Socket.IO servers.
+*   `src/`: Contains the core source code for the backend application.
+    *   `api/`: Defines API route handlers for different modules/features.
+        *   `admin.js`: General admin-related routes.
+        *   `adminOrganizations.js`: Routes for administrative management of organizations.
+        *   `auth.js`: Handles authentication routes (`/register`, `/login`, `/refresh`, `/logout`).
+        *   `friends.js`: Routes for friendship management.
+        *   `organizations.js`: Public-facing routes for organizations (e.g., listing).
+        *   `rooms.js`: Routes for room/server management (create, list, join, leave, members, delete).
+        *   `users.js`: Routes for user-specific actions (e.g., password changes, fetching user's organizations).
+    *   `config/`: Contains `index.js` which exports a getter for the generated `config.js` file.
+    *   `config.js`: (Generated file by `scripts/build-config.js`) Holds environment-specific backend configuration.
+    *   `middleware/`: Contains Express middleware.
+        *   `auth.js`: Includes `authenticateToken` middleware for verifying JWTs on protected routes.
+    *   `services/`: Houses the business logic and database interaction layer.
+        *   `adminOrganizationService.js`: Service logic for admin management of organizations.
+        *   `authService.js`: Service logic for user registration (username/password only, placeholder email generation), login (username to placeholder email lookup), and token refresh.
+        *   `friendService.js`: Service logic for friendship features.
+        *   `roomService.js`: Service logic for room/server operations.
+        *   `userService.js`: Service logic for user-related operations (e.g., password updates, fetching user memberships).
+    *   `socket/`: Contains the server-side setup for Socket.IO.
+        *   `index.js`: Initializes the Socket.IO server and likely defines event handlers for real-time communication.
+    *   `supabaseAdminClient.js`: Initializes and exports the Supabase admin client (using the service role key for privileged operations).
+    *   `supabaseClient.js`: Initializes and exports the standard Supabase client (using the anonymous key for client-side and RLS-protected operations).
+
+### `frontend/` Directory
+
+*   `.env.development`, `.env.production`: Environment variable files used by `scripts/build-config.js` to generate frontend configuration.
+*   `.gitignore`: Frontend-specific Git ignore rules.
+*   `package.json`: Frontend-specific Node.js project file, typically for managing development tools and the static web server (dependencies: `express`, `dotenv`, `socket.io-client`; devDependencies: `nodemon`, `cross-env`).
+*   `public/`: The root directory for all static assets served to the client.
+    *   `images/`: Contains image assets for the frontend.
+    *   `js/`: Contains client-side JavaScript files, organized by page or shared functionality.
+        *   Core modules: `apiService.js` (API interaction), `AuthManager.js` (auth state), `store.js` (simple state), `socket.js` (Socket.IO client).
+        *   Page-specific scripts: `admin.js`, `chat.js`, `friends.js`, `login.js`, `profile.js`, `register.js`, `servers.js`, etc.
+        *   `config.js`: (Generated file by `scripts/build-config.js`) Holds environment-specific frontend configuration (e.g., backend URL).
+    *   `pages/`: Contains the HTML files for the application's various pages (e.g., `index.html`, `login.html`, `servers.html`).
+    *   `styles/`: Contains CSS stylesheets, possibly structured into base styles, components, layouts, and page-specific styles.
+*   `scripts/`: Utility scripts for the frontend.
+    *   `build-config.js`: Generates `public/js/config.js` from environment variables.
+*   `vercel.json`: Configuration file for deployments to the Vercel platform.
+*   `webServer.js`: A simple Express.js server used to serve the `frontend/public` directory during local development.
+
+## 9. Build & Deployment
 
 *   **Backend (`backend/`)**:
     *   `npm install` for dependencies.
@@ -137,13 +210,13 @@ GameConnecting is a platform designed to facilitate real-time connections for ga
     *   Deployed on Vercel.
 *   **Root**: `npm run install-deps` likely installs for root, backend, and frontend. Root `npm start/dev` probably uses `concurrently`.
 
-## 9. Key Environment Variables
+## 10. Key Environment Variables
 
 *   **Backend**:
     *   `DATABASE_URL`: Full PostgreSQL connection string for `node-pg-migrate` (and potentially other direct DB access). Prioritized over `LOCAL_DB_URL`.
     *   `LOCAL_DB_URL`: Fallback for local development database connection string.
     *   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`: For Supabase client libraries.
-    *   `JWT_SECRET`: (Mentioned in `.env.development` but Supabase handles JWTs by default, so its current direct use is unclear without deeper JWT middleware check).
+    *   `JWT_SECRET`: (Mentioned in `.env.development` but Supabase handles JWTs by default, so its current direct use is unclear).
     *   `API_KEY`: Custom API key for backend services.
     *   `PORT`: Port for the backend server (e.g., 10000 on Render).
     *   `NODE_ENV`: 'development' or 'production'.
@@ -153,25 +226,29 @@ GameConnecting is a platform designed to facilitate real-time connections for ga
     *   `NEXT_PUBLIC_SUPABASE_URL` (or similar for Supabase URL)
     *   `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or similar for Supabase Anon Key)
 
-## 10. Recent Major Changes & Refactors
+## 11. Recent Key System Characteristics
+*(Formerly "Recent Major Changes & Refactors")*
 
-*   Shift to username-only registration (no user-provided email).
-*   Implementation of `node-pg-migrate` database migration system, with initial schema based on `extracted_ddl.sql`.
-*   Refactoring of frontend `AuthManager` for robust access and refresh token handling in `localStorage`.
-*   Resolution of several backend API 404s (e.g., `POST /servers` now `POST /api/rooms/create`).
-*   Implementation of role storage in `AuthManager` and groundwork for role-based UI.
-*   Fixes to frontend logic for parsing nested API responses from `apiService.js` (e.g., in `AuthManager.login`, `AuthManager.refreshToken`, `register.js` for org list, `servers.js` for room list).
+*   The authentication system uses username-only registration and login, with placeholder emails for Supabase Auth compatibility.
+*   Database schema is managed by `node-pg-migrate`.
+*   Frontend `AuthManager.js` handles JWT access/refresh tokens and user role storage in `localStorage`.
+*   Frontend API response parsing has been updated to handle a nested data structure from `apiService.js`.
 
-## 11. Known Issues / Current State / Areas for Improvement
+## 12. Current Status, Known Issues, & Potential Next Steps
 
-*   **Password Recovery**: Not implemented for the username-only system. This is a critical missing feature for user experience.
-*   **Comprehensive Testing Needed**: After recent significant auth refactors and feature additions, thorough testing of all user flows (registration, login, admin actions, room interactions, organization interactions, etc.) is essential.
-*   **Database Schema on Deployment**: Ensuring the database on Render (or any new environment) is correctly initialized *only* by migrations (i.e., starts with a clean public schema before the first `db:migrate:up`). Previous errors like "relation already exists" indicate this might have been an issue. The "No migrations to run!" message in recent logs suggests the `pgmigrations` table *thinks* the schema is up-to-date.
-*   **RLS Policies**: Verification of Supabase Row Level Security policies for tables like `organizations` (for public listing) and others to ensure data is accessible as intended (e.g., the `GET /api/organizations` 500 error was likely RLS, now returning 200 OK with empty array, which is fine if no public orgs exist and RLS allows empty reads).
-*   **Frontend `servers.js` - Listing Rooms**: The `loadServers` function was recently fixed to call `GET /api/rooms/list` and parse the response correctly. This needs testing.
-*   **Role-Based Navigation & Navbar**: Currently in progress. `AuthManager` stores role. `navbar.js` and `login.js` (for redirection) are the next steps in the active plan.
-*   **`PROGRESS.md` Items**: Many features outlined in `PROGRESS.md` (advanced room features, Socket.IO security, etc.) are still pending.
-*   **Error Handling**: While some specific error messages have been improved, a more systematic review of error handling and user feedback throughout the application could be beneficial.
-*   **Code Cleanup**: Removal of any remaining temporary debug logs (e.g., the `console.log` in `AuthManager.register`).
+*   **Key Missing Feature**: Password recovery for the username-only system is not implemented.
+*   **Testing**: Comprehensive end-to-end testing is crucial after recent authentication and feature updates.
+*   **Deployment & DB Initialization**: Ensuring database schemas in deployment environments (like Render) are exclusively managed and initialized via `node-pg-migrate` from a clean state is critical.
+*   **RLS Policies**: Ongoing verification of Supabase Row Level Security policies is needed to ensure correct data access.
+*   **Role-Based UI**:
+    *   `AuthManager.js` now stores user roles.
+    *   The immediate next steps in the active plan involve updating `navbar.js` for role-based link display and `login.js` for role-based redirection. *(This point should be updated once those tasks are confirmed complete by the other agent/plan.)*
+*   **`PROGRESS.md` Review**: Many items listed in `PROGRESS.md` (e.g., advanced room features, Socket.IO security enhancements) are likely still pending development.
+*   **Error Handling**: A systematic review and enhancement of error handling and user feedback across the application would be beneficial.
+*   **Code Cleanup**: Any remaining temporary diagnostic logs should be removed (e.g., the `console.log` in `AuthManager.register` should be removed if not already).
 
 This document should serve as a good snapshot of my current understanding.
+
+## 13. Future State / Planned Features
+
+*(This section will be populated based on user input and items from `PROGRESS.md` not yet fully implemented, e.g., advanced room features, password recovery, Socket.IO security enhancements, etc.)*
