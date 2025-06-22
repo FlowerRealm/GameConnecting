@@ -61,6 +61,164 @@ async function createRoom(name, description, room_type = 'public', creatorId) {
 }
 
 /**
+ * Removes (kicks) a member from a room by an admin.
+ * @param {string} roomId - The ID of the room.
+ * @param {string} userIdToKick - The ID of the user to be kicked.
+ * @returns {Promise<object>} Result object with success status or error.
+ */
+async function kickMemberByAdmin(roomId, userIdToKick) {
+    if (!roomId || !userIdToKick) {
+        return { success: false, error: { status: 400, message: 'Room ID and User ID to kick are required.' } };
+    }
+
+    try {
+        // First, check if the user to be kicked is the room owner.
+        // Admins should not be able to kick the owner directly. Ownership transfer or room deletion are other processes.
+        const { data: room, error: roomFetchError } = await supabase
+            .from('rooms')
+            .select('creator_id')
+            .eq('id', roomId)
+            .single();
+
+        if (roomFetchError) {
+            console.error('Error fetching room details for kickMemberByAdmin:', roomFetchError);
+            return { success: false, error: { status: 500, message: 'Failed to verify room details before kicking member.' } };
+        }
+        if (!room) {
+            return { success: false, error: { status: 404, message: 'Room not found.' } };
+        }
+        if (room.creator_id === userIdToKick) {
+            return { success: false, error: { status: 403, message: 'Cannot kick the room owner. The owner must delete the room or transfer ownership.' } };
+        }
+
+        // Proceed to delete the member from room_members
+        const { error: deleteError, count } = await supabase
+            .from('room_members')
+            .delete()
+            .eq('room_id', roomId)
+            .eq('user_id', userIdToKick);
+
+        if (deleteError) {
+            console.error('Error kicking member by admin in service:', deleteError);
+            return { success: false, error: { status: 500, message: deleteError.message || 'Failed to kick member.' } };
+        }
+        if (count === 0) {
+            return { success: false, error: { status: 404, message: 'User is not a member of this room or already removed.' } };
+        }
+
+        return { success: true, message: 'Member kicked successfully by admin.' };
+    } catch (error) {
+        console.error('Unknown error in kickMemberByAdmin service:', error);
+        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred while kicking the member.' } };
+    }
+}
+
+/**
+ * Deletes a server by an admin.
+ * Note: Assumes ON DELETE CASCADE is set for related tables like room_members, room_join_requests.
+ * @param {string} roomId - The ID of the room to delete.
+ * @returns {Promise<object>} Result object with success status or error.
+ */
+async function deleteServerByAdmin(roomId) {
+    if (!roomId) {
+        return { success: false, error: { status: 400, message: 'Room ID is required for deletion.' } };
+    }
+
+    try {
+        // No need to check creator_id for admin deletion. Admin can delete any room.
+        const { error, count } = await supabase
+            .from('rooms')
+            .delete()
+            .eq('id', roomId);
+
+        if (error) {
+            console.error('Error deleting server by admin in service:', error);
+            return { success: false, error: { status: 500, message: error.message || 'Failed to delete server.' } };
+        }
+        if (count === 0) {
+            return { success: false, error: { status: 404, message: 'Server not found or already deleted.' } };
+        }
+
+        return { success: true, message: 'Server deleted successfully by admin.' };
+    } catch (error) {
+        console.error('Unknown error in deleteServerByAdmin service:', error);
+        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred while deleting the server.' } };
+    }
+}
+
+/**
+ * Updates a server's details by an admin.
+ * @param {string} roomId - The ID of the room to update.
+ * @param {object} updates - An object containing fields to update (e.g., { name, description, room_type }).
+ * @returns {Promise<object>} Result object with success status, data, or error.
+ */
+async function updateServerByAdmin(roomId, updates) {
+    if (!roomId || !updates || Object.keys(updates).length === 0) {
+        return { success: false, error: { status: 400, message: 'Room ID and updates object are required and updates cannot be empty.' } };
+    }
+
+    const allowedUpdates = ['name', 'description', 'room_type'];
+    const validUpdates = {};
+    let hasInvalidField = false;
+
+    for (const key in updates) {
+        if (allowedUpdates.includes(key)) {
+            if (key === 'room_type' && !['public', 'private'].includes(updates[key])) {
+                return { success: false, error: { status: 400, message: "Invalid room_type. Must be 'public' or 'private'." } };
+            }
+            if (key === 'name' && (typeof updates[key] !== 'string' || updates[key].trim().length < 3 || updates[key].trim().length > 100)) {
+                return { success: false, error: { status: 400, message: "Name must be a string between 3 and 100 characters." } };
+            }
+            if (key === 'description' && updates[key] !== null && (typeof updates[key] !== 'string' || updates[key].length > 1000)) {
+                return { success: false, error: { status: 400, message: "Description must be a string and no more than 1000 characters." } };
+            }
+            validUpdates[key] = updates[key];
+        } else {
+            hasInvalidField = true; // Just note it, or strictly reject
+            console.warn(`Admin update server: Disallowed field '${key}' provided in updates.`);
+            // Depending on strictness, you might return an error here:
+            // return { success: false, error: { status: 400, message: `Field '${key}' is not allowed for update.` } };
+        }
+    }
+
+    if (Object.keys(validUpdates).length === 0 && hasInvalidField) {
+        // This means only invalid fields were provided, or if strict, an invalid field caused early exit.
+        return { success: false, error: { status: 400, message: 'No valid fields provided for update or only disallowed fields were sent.' } };
+    }
+    if (Object.keys(validUpdates).length === 0 && !hasInvalidField) {
+         return { success: false, error: { status: 400, message: 'No fields to update were provided after validation (e.g. empty name).' } };
+    }
+
+
+    validUpdates.updated_at = new Date().toISOString(); // Ensure updated_at is set
+
+    try {
+        const { data: updatedRoom, error } = await supabase
+            .from('rooms')
+            .update(validUpdates)
+            .eq('id', roomId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating server by admin in service:', error);
+            if (error.code === 'PGRST116') { // PostgREST error for "No rows found"
+                return { success: false, error: { status: 404, message: 'Server not found.' } };
+            }
+            return { success: false, error: { status: 500, message: error.message || 'Failed to update server.' } };
+        }
+        if (!updatedRoom) { // Should be caught by PGRST116, but as a fallback
+            return { success: false, error: { status: 404, message: 'Server not found or update failed to return data.' } };
+        }
+
+        return { success: true, data: updatedRoom };
+    } catch (error) {
+        console.error('Unknown error in updateServerByAdmin service:', error);
+        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred while updating the server.' } };
+    }
+}
+
+/**
  * Lists all public rooms.
  * @returns {Promise<object>} Result object with success status, data, or error.
  */
@@ -288,4 +446,70 @@ export {
     leaveRoom,
     getRoomMembers,
     deleteRoom,
+    getAllServersForAdmin, // Added for admin functionality
+    updateServerByAdmin, // Added for admin server update
+    deleteServerByAdmin, // Added for admin server deletion
+    kickMemberByAdmin, // Added for admin kicking member
 };
+
+/**
+ * Fetches all rooms with extended information for admin view.
+ * Includes creator's username and potentially member count.
+ * @returns {Promise<object>} Result object with success status, data, or error.
+ */
+async function getAllServersForAdmin() {
+    try {
+        const { data: rooms, error } = await supabase
+            .from('rooms')
+            .select(`
+                id,
+                name,
+                description,
+                room_type,
+                created_at,
+                last_active_at,
+                creator_id,
+                creator_profile:user_profiles!creator_id:id(username)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching all rooms for admin in service:', error);
+            return { success: false, error: { status: 500, message: error.message || 'Failed to fetch rooms for admin.' } };
+        }
+
+        // Post-process to include member counts (example, can be optimized)
+        // This is N+1 query pattern, not ideal for large number of rooms.
+        // A better approach might involve a view or a more complex SQL query if performance becomes an issue.
+        const roomsWithMemberCounts = await Promise.all(
+            (rooms || []).map(async (room) => {
+                const { count, error: countError } = await supabase
+                    .from('room_members')
+                    .select('user_id', { count: 'exact', head: true })
+                    .eq('room_id', room.id);
+
+                if (countError) {
+                    console.warn(`Failed to get member count for room ${room.id}:`, countError.message);
+                }
+                return {
+                    ...room,
+                    creator_username: room.creator_profile?.username || 'N/A', // Handle if profile is null
+                    member_count: countError ? 'Error' : count,
+                };
+            })
+        );
+
+        // Clean up the creator_profile object if desired, or keep it nested
+        const finalRooms = roomsWithMemberCounts.map(room => {
+            const { creator_profile, ...rest } = room;
+            return rest;
+        });
+
+
+        return { success: true, data: finalRooms };
+
+    } catch (error) {
+        console.error('Unknown error in getAllServersForAdmin service:', error);
+        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred while fetching rooms for admin.' } };
+    }
+}

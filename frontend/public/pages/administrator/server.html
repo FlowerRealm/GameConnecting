@@ -21,31 +21,63 @@
     </nav>
 
     <div class="admin-container glassmorphic-container">
-        <h1>服务器管理页面</h1>
-        <p>这里将用于管理服务器。</p>
-        <!-- 未来服务器管理相关的内容将放在这里 -->
+        <h1>服务器管理</h1>
+
+        <div class="admin-actions">
+            <button id="createServerBtn" class="button primary-button">创建新服务器</button>
+        </div>
+
+        <div id="serverListContainer" class="table-container">
+            <p>正在加载服务器列表...</p>
+            <!-- Server list will be rendered here -->
+        </div>
+
+        <!-- Modal for Create/Edit Server -->
+        <div id="serverModal" class="modal">
+            <div class="modal-content glassmorphic-container">
+                <h2 id="serverModalTitle">创建/编辑服务器</h2>
+                <form id="serverForm">
+                    <input type="hidden" id="serverId" name="serverId">
+                    <div class="form-group">
+                        <label for="serverName">服务器名称:</label>
+                        <input type="text" id="serverName" name="name" required minlength="3" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="serverDescription">描述:</label>
+                        <textarea id="serverDescription" name="description" maxlength="1000"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="serverType">类型:</label>
+                        <select id="serverType" name="room_type">
+                            <option value="public">公开</option>
+                            <option value="private">私有</option>
+                        </select>
+                    </div>
+                    <div class="modal-buttons">
+                        <button type="button" class="modal-close" id="closeServerModalBtn">取消</button>
+                        <button type="submit" class="button primary-button">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Managing Members -->
+        <div id="membersModal" class="modal">
+            <div class="modal-content glassmorphic-container">
+                <h2 id="membersModalTitle">管理成员 - <span id="membersModalServerName"></span></h2>
+                <div id="memberListContainer" class="table-container">
+                    <p>正在加载成员列表...</p>
+                    <!-- Member list will be rendered here -->
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-close" id="closeMembersModalBtn">关闭</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- 可能需要不同的JS文件，或者一个通用的admin shell JS -->
-    <!-- <script src="/js/admin-server-management.js" type="module"></script> -->
-    <script type="module">
-        // Quick inline script to initialize navbar for placeholder page
-        import { initNavbar } from '/js/navbar.js';
-        import { AuthManager } from '/js/auth.js';
-
-        const auth = AuthManager.getInstance();
-        if (!auth.isAuthenticated() || !auth.isAdmin()) {
-            // Redirect if not authenticated admin
-            // For placeholder, we might just let it render and rely on navbar to show correct links
-            // or redirect to login/home. Given it's an admin page, stricter checks are good.
-            // However, for a simple placeholder, this might be overkill.
-            // Let's assume navbar handles most visual cues.
-            // If direct access needs blocking, more robust routing/auth checks per page load are needed.
-             if(!auth.isAuthenticated()){ window.location.href = '/login';}
-             else if(!auth.isAdmin()){ window.location.href = '/';} // or to an 'unauthorized' page
-        }
-        initNavbar();
-    </script>
+    <script src="/js/adminServerManagement.js" type="module"></script>
 </body>
 
 </html>
