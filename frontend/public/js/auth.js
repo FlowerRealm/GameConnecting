@@ -9,6 +9,7 @@ export class AuthManager {
         this.tokenKey = 'gameconnecting_token';
         this.usernameKey = 'gameconnecting_username';
         this.refreshTokenKey = 'gameconnecting_refresh_token'; // Added refresh token key
+        this.roleKey = 'gameconnecting_role'; // Added role key
     }
 
     static getInstance() {
@@ -234,6 +235,9 @@ export class AuthManager {
             localStorage.setItem(this.refreshTokenKey, refreshToken);
         }
         if (username && this.usernameKey) localStorage.setItem(this.usernameKey, username);
+        if (role && this.roleKey) { // Store role
+            localStorage.setItem(this.roleKey, role);
+        }
 
         window.dispatchEvent(new CustomEvent('auth:login', {
             detail: { username }
@@ -248,6 +252,7 @@ export class AuthManager {
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.usernameKey);
         localStorage.removeItem(this.refreshTokenKey); // Remove refresh token on logout
+        localStorage.removeItem(this.roleKey); // Remove role on logout
         store.clearState();
         window.dispatchEvent(new CustomEvent('auth:logout'));
     }
@@ -267,6 +272,14 @@ export class AuthManager {
     getUsername() {
         return localStorage.getItem(this.usernameKey);
     }
+
+    /**
+     * 获取存储的角色
+     */
+    getRole() {
+        return localStorage.getItem(this.roleKey);
+    }
+
     /**
      * 获取存储的用户 ID
      */
@@ -292,7 +305,6 @@ export class AuthManager {
      * 检查用户是否是管理员
      */
     isAdmin() {
-        const username = this.getUsername();
-        return username === 'admin';
+        return this.getRole() === 'admin';
     }
 }

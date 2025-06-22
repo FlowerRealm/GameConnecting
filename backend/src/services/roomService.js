@@ -12,7 +12,7 @@ import { supabase } from '../supabaseClient.js';
  * @param {string} creatorId - The ID of the user creating the room.
  * @returns {Promise<object>} Result object with success status, data, or error.
  */
-async function createRoom(name, description, room_type, creatorId) {
+async function createRoom(name, description, room_type = 'public', creatorId) {
     try {
         // Step 1: Create the room
         const { data: room, error: roomError } = await supabase

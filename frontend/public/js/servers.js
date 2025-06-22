@@ -213,7 +213,7 @@ async function handleServerSubmit(event) {
                 body: JSON.stringify(serverData)
             });
         } else {
-            response = await apiService.request('/servers', {
+            response = await apiService.request('/api/rooms/create', { // Changed endpoint
                 method: 'POST',
                 body: JSON.stringify(serverData)
             });
