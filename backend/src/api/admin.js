@@ -24,7 +24,7 @@ router.get('/users', authenticateToken, isAdmin, async (req, res) => {
                 created_at,
                 admin_note,
                 approved_at,
-                approvedByUser:approved_by!user_profiles(username)
+                approvedByUser:user_profiles!approved_by:id(username)
             `, { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
