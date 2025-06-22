@@ -15,7 +15,6 @@ import roomsRouter from './src/api/rooms.js';
 import adminRouter from './src/api/admin.js'; // General admin routes
 import adminOrganizationsRouter from './src/api/adminOrganizations.js'; // Admin routes for organizations
 import organizationsRouter from './src/api/organizations.js'; // Public routes for organizations
-import friendsRouter from './src/api/friends.js';
 import usersRouter from './src/api/users.js';
 import { initSocket } from './src/socket/index.js';
 import { getConfig, getServerConfig } from './src/config/index.js';
@@ -79,7 +78,6 @@ app.use('/api/rooms', roomsRouter);
 app.use('/admin', adminRouter); // Keep for existing general admin tasks if any
 app.use('/api/admin/organizations', adminOrganizationsRouter); // New route for admin org management
 app.use('/api/organizations', organizationsRouter); // New public route for organizations
-app.use('/friends', friendsRouter);
 app.use('/users', usersRouter);
 
 app.get('/health', (req, res) => {
