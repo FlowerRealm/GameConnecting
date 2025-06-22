@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>所有用户 - GameConnecting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-content-wrapper">
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+            </div>
+            <div class="navbar-auth" id="authButtons">
+            </div>
+        </div>
+    </nav>
+
+    <div class="container glassmorphic-container">
+        <h1>所有用户页面</h1>
+        <p>这里将显示所有用户列表。</p>
+        <!-- 未来所有用户列表相关的内容将放在这里 -->
+    </div>
+
+    <script type="module">
+        import { initNavbar } from '/js/navbar.js';
+        import { AuthManager } from '/js/auth.js';
+
+        const auth = AuthManager.getInstance();
+        if (!auth.isAuthenticated()) {
+            window.location.href = '/login';
+        }
+        initNavbar();
+    </script>
+</body>
+
+</html>

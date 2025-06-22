@@ -18,13 +18,13 @@ export function initNavbar() {
         // 根据用户角色显示不同的导航菜单
         if (userRole === 'admin') {
             navMenu.innerHTML = `
-                <a href="/servers" class="nav-item">房间管理</a>
-                <a href="/admin" class="nav-item">用户管理</a>
+                <a href="/admin/server-management" class="nav-item">服务器管理</a>
+                <a href="/admin/user-management" class="nav-item">用户管理</a>
             `;
         } else { // Normal user
             navMenu.innerHTML = `
-                <a href="/servers" class="nav-item">房间列表</a>
-                <a href="/friends" class="nav-item">好友</a>
+                <a href="/user/servers" class="nav-item">服务器</a>
+                <a href="/user/all-users" class="nav-item">所有用户</a>
             `;
         }
 

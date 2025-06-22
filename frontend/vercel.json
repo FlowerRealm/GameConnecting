@@ -37,16 +37,20 @@
             "dest": "/pages/register.html"
         },
         {
-            "src": "/admin",
-            "dest": "/pages/admin.html"
+            "src": "/admin/user-management",
+            "dest": "/pages/admin/user-management.html"
         },
         {
-            "src": "/servers",
-            "dest": "/pages/servers.html"
+            "src": "/admin/server-management",
+            "dest": "/pages/admin/server-management.html"
         },
         {
-            "src": "/friends",
-            "dest": "/pages/friends.html"
+            "src": "/user/servers",
+            "dest": "/pages/user/servers.html"
+        },
+        {
+            "src": "/user/all-users",
+            "dest": "/pages/user/all-users.html"
         },
         {
             "src": "/chat",

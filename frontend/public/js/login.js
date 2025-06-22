@@ -39,15 +39,9 @@ form.addEventListener('submit', async (e) => {
             error.textContent = '登录成功，正在跳转...';
             error.style.display = 'block';
 
-            // Retrieve role from the nested data structure
-            const userRole = result.data && result.data.data ? result.data.data.role : null;
-
+            // All users redirect to '/' after successful login
             setTimeout(() => {
-                if (userRole === 'admin') {
-                    window.location.href = '/admin'; // Redirect admin to /admin
-                } else { // Default redirect for any other authenticated user (e.g., 'user' role)
-                    window.location.href = '/friends'; // Redirect normal users to /friends
-                }
+                window.location.href = '/';
             }, 1000);
         } else {
             error.className = 'error';

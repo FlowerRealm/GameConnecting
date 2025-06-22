@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器管理 - GameConnecting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-content-wrapper">
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+            </div>
+            <div class="navbar-auth" id="authButtons">
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-container glassmorphic-container">
+        <h1>服务器管理页面</h1>
+        <p>这里将用于管理服务器。</p>
+        <!-- 未来服务器管理相关的内容将放在这里 -->
+    </div>
+
+    <!-- 可能需要不同的JS文件，或者一个通用的admin shell JS -->
+    <!-- <script src="/js/admin-server-management.js" type="module"></script> -->
+    <script type="module">
+        // Quick inline script to initialize navbar for placeholder page
+        import { initNavbar } from '/js/navbar.js';
+        import { AuthManager } from '/js/auth.js';
+
+        const auth = AuthManager.getInstance();
+        if (!auth.isAuthenticated() || !auth.isAdmin()) {
+            // Redirect if not authenticated admin
+            // For placeholder, we might just let it render and rely on navbar to show correct links
+            // or redirect to login/home. Given it's an admin page, stricter checks are good.
+            // However, for a simple placeholder, this might be overkill.
+            // Let's assume navbar handles most visual cues.
+            // If direct access needs blocking, more robust routing/auth checks per page load are needed.
+             if(!auth.isAuthenticated()){ window.location.href = '/login';}
+             else if(!auth.isAdmin()){ window.location.href = '/';} // or to an 'unauthorized' page
+        }
+        initNavbar();
+    </script>
+</body>
+
+</html>
