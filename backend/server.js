@@ -1,4 +1,3 @@
-console.log('--- SERVER.JS LATEST VERSION RUNNING --- [Timestamp: ' + new Date().toISOString() + ']');
 /*
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-31 09:54:18
@@ -97,7 +96,6 @@ initSocket(server);
 const port = serverConfig.port;
 server.listen(port, '0.0.0.0', () => {
     console.log('环境:', getConfig('env'));
-    // console.log('前端URL (from config, for reference):', serverConfig.frontendUrl); // serverConfig.frontendUrl might be stale if not updated
     console.log('Allowed CORS origins:', allowedOrigins);
     console.log(`后端服务器运行在: http://0.0.0.0:${port}`);
 });

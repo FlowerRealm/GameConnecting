@@ -41,7 +41,6 @@ export async function updateUserPassword(userId, newPassword) {
 
         // According to Supabase docs, data should contain the updated user object.
         // If no error, the operation was successful.
-        // console.log('Password updated successfully for user:', data?.user?.id);
         return { success: true, message: 'Password updated successfully.' };
 
     } catch (error) {

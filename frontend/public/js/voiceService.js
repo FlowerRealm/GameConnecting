@@ -2,8 +2,6 @@
 // For now, let's try to use a global `io()` or assume it's managed elsewhere.
 // import { socket } from './socketService.js'; // If you have a socket service
 
-console.log('VoiceService.js loaded');
-
 const peerConnections = {}; // socketId -> RTCPeerConnection
 let localStream = null;
 let currentVoiceRoomId = null;
@@ -33,7 +31,6 @@ export function initVoiceChat(socketInstance) {
     localSocketId = socket.id;
 
     socket.on('voice:active_users_in_room', ({ users }) => {
-        console.log('Voice: Received active users in room:', users);
         activeVoiceUsers.clear();
         users.forEach(user => {
             // Ensure the structure matches what server sends: {socketId, userId, username}
@@ -48,7 +45,6 @@ export function initVoiceChat(socketInstance) {
     });
 
     socket.on('voice:user_joined', ({ socketId, userId, username }) => {
-        console.log(`Voice: User ${username} (socket: ${socketId}) joined.`);
         // Server sends {socketId, userId, username}
         activeVoiceUsers.set(socketId, { socketId, userId, username });
         if (onVoiceUsersUpdate) {
@@ -60,7 +56,6 @@ export function initVoiceChat(socketInstance) {
     });
 
     socket.on('voice:user_left', ({ socketId, userId, username }) => {
-        console.log(`Voice: User ${username} (socket: ${socketId}) left.`);
         activeVoiceUsers.delete(socketId);
         if (onVoiceUsersUpdate) {
             onVoiceUsersUpdate(Array.from(activeVoiceUsers.values()));
@@ -74,7 +69,6 @@ export function initVoiceChat(socketInstance) {
     });
 
     socket.on('voice:receive_signal', async ({ senderSocketId, signalType, sdp }) => {
-        console.log(`Voice: Received signal from ${senderSocketId}`, { signalType, sdp });
         let pc = peerConnections[senderSocketId];
         if (!pc) {
             pc = createPeerConnection(senderSocketId, false);
@@ -97,7 +91,6 @@ export function initVoiceChat(socketInstance) {
     });
 
     socket.on('voice:receive_ice_candidate', ({ senderSocketId, candidate }) => {
-        console.log(`Voice: Received ICE candidate from ${senderSocketId}`, candidate);
         const pc = peerConnections[senderSocketId];
         if (pc && candidate) {
             pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error('Error adding ICE candidate:', e));
@@ -112,10 +105,8 @@ export function initVoiceChat(socketInstance) {
 
 function createPeerConnection(targetSocketId, isOfferInitiator) {
     if (peerConnections[targetSocketId]) {
-        console.log('PeerConnection already exists for', targetSocketId);
         return peerConnections[targetSocketId];
     }
-    console.log(`Voice: Creating PeerConnection to ${targetSocketId}. Initiator: ${isOfferInitiator}`);
 
     const pc = new RTCPeerConnection(iceConfiguration);
     peerConnections[targetSocketId] = pc;
@@ -139,7 +130,6 @@ function createPeerConnection(targetSocketId, isOfferInitiator) {
     };
 
     pc.ontrack = (event) => {
-        console.log(`Voice: Received remote track from ${targetSocketId}`);
         const audioElId = `audio_${targetSocketId}`;
         let audioEl = document.getElementById(audioElId);
         if (!audioEl) {
@@ -158,7 +148,6 @@ function createPeerConnection(targetSocketId, isOfferInitiator) {
     };
 
     pc.oniceconnectionstatechange = () => {
-        console.log(`ICE connection state change for ${targetSocketId}: ${pc.iceConnectionState}`);
         if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
             console.error(`ICE connection to ${targetSocketId} failed or disconnected.`);
         }
@@ -187,7 +176,6 @@ export async function joinVoiceRoom(roomId) {
         return false; // Indicate failure
     }
     if (currentVoiceRoomId === roomId && localStream) {
-        console.log('Already in this voice room.');
         return true; // Indicate already joined
     }
 
@@ -201,11 +189,9 @@ export async function joinVoiceRoom(roomId) {
     }
 
     currentVoiceRoomId = String(roomId);
-    console.log(`Voice: Attempting to join room ${currentVoiceRoomId}`);
 
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        console.log('Voice: Emitting voice:join_room for room', currentVoiceRoomId);
         socket.emit('voice:join_room', { roomId: currentVoiceRoomId });
         return true; // Indicate success
     } catch (error) {
@@ -222,10 +208,8 @@ export async function joinVoiceRoom(roomId) {
 
 export async function leaveVoiceRoom() {
     if (!socket || !currentVoiceRoomId) {
-        console.log('Not in a voice room or socket not initialized.');
         return;
     }
-    console.log(`Voice: Leaving room ${currentVoiceRoomId}`);
     socket.emit('voice:leave_room', { roomId: currentVoiceRoomId });
 
     activeVoiceUsers.clear();
@@ -245,7 +229,6 @@ export async function leaveVoiceRoom() {
     }
     peerConnections = {};
 
-    console.log(`Voice: Left room ${currentVoiceRoomId}. Cleaned up resources.`);
     currentVoiceRoomId = null;
 }
 
@@ -259,8 +242,5 @@ export function toggleMute() {
         track.enabled = !track.enabled;
         isMutedNow = !track.enabled;
     });
-    console.log(isMutedNow ? 'Microphone Muted' : 'Microphone Unmuted');
     return isMutedNow;
 }
-
-console.log('VoiceService.js processing complete.');

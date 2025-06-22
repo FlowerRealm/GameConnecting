@@ -16,16 +16,3 @@ export const supabase = createClient(config.supabase.url, config.supabase.anonKe
     autoRefreshToken: false, // Similarly, often true for client-side.
   }
 });
-
-// Optional: Test connection or a simple query (if possible without tables yet)
-// async function checkSupabase() {
-//   try {
-//     // Replace 'some_table' with a table name once you have one, or use a Supabase function to check status
-//     // const { data, error } = await supabase.from('some_table').select('*').limit(1);
-//     // if (error) throw error;
-//     console.log('Successfully connected to Supabase and fetched data (if any):', data);
-//   } catch (error) {
-//     console.error('Error connecting to Supabase:', error.message);
-//   }
-// }
-// checkSupabase();

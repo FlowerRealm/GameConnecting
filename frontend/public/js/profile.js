@@ -62,7 +62,6 @@ if (changePasswordForm) {
 
             // Simulate an async call and a potential structure for the result
             // Replace this with the actual call once authManager.changePassword is implemented.
-            console.log('Attempting to call authManager.changePassword (not yet implemented)');
             const result = await new Promise(resolve => setTimeout(() => {
                  // Simulate a success for now, or toggle for testing
                 // resolve({ success: true });
