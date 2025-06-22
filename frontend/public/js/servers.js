@@ -60,15 +60,20 @@ async function loadServers() {
         // 根据用户角色决定加载所有服务器还是仅加入的服务器
         // 这里我们假设普通用户看到的是他们可以加入或已加入的服务器列表
         // 管理员可能看到所有服务器
-        const apiResponse = await apiService.request('/servers');
+        const apiResponse = await apiService.request('/api/rooms/list'); // Changed endpoint
         // apiResponse.data from apiService is the backend's response: { success: boolean, data: array | object, message?: string }
-        if (apiResponse.success && apiResponse.data && apiResponse.data.success) {
-            renderServers(apiResponse.data.data);
+
+        if (apiResponse.success && apiResponse.data && apiResponse.data.success && Array.isArray(apiResponse.data.data)) {
+            renderServers(apiResponse.data.data); // Pass the actual array of rooms
         } else {
-            showError(apiResponse.data?.message || apiResponse.message || '加载服务器列表失败');
+            // Handle cases where HTTP request failed, backend logic failed, or data format is incorrect
+            const errorMessage = apiResponse.data?.message || apiResponse.message || '加载服务器列表失败';
+            showError(errorMessage);
+            console.error('Error loading servers/rooms:', errorMessage, 'Full apiResponse:', apiResponse);
         }
     } catch (error) {
-        showError('加载服务器列表失败');
+        console.error('Exception in loadServers:', error);
+        showError('加载服务器列表时发生网络或意外错误'); // "Network or unexpected error occurred while loading server list"
     }
 }
 
