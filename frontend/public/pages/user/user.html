@@ -21,21 +21,14 @@
     </nav>
 
     <div class="container glassmorphic-container">
-        <h1>所有用户页面</h1>
-        <p>这里将显示所有用户列表。</p>
-        <!-- 未来所有用户列表相关的内容将放在这里 -->
+        <h1>所有用户</h1>
+        <div id="user-list-container">
+            <p>正在加载用户列表...</p>
+        </div>
+        <!-- 用户列表将由JS动态填充到这里 -->
     </div>
 
-    <script type="module">
-        import { initNavbar } from '/js/navbar.js';
-        import { AuthManager } from '/js/auth.js';
-
-        const auth = AuthManager.getInstance();
-        if (!auth.isAuthenticated()) {
-            window.location.href = '/login';
-        }
-        initNavbar();
-    </script>
+    <script src="/js/userListPage.js" type="module"></script>
 </body>
 
 </html>

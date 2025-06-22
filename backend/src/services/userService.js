@@ -112,3 +112,31 @@ export async function getUserOrganizationMemberships(userId) {
     throw error;
   }
 }
+
+/**
+ * Fetches a list of active users.
+ * Returns only id and username, ordered by username.
+ * @returns {Promise<{success: boolean, data?: Array, message?: string, status?: number}>}
+ */
+export async function getActiveUsersList() {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('user_profiles')
+            .select('id, username') // Fetch only id and username
+            .eq('status', 'active') // Filter by active status
+            .order('username', { ascending: true }); // Order by username
+
+        if (error) {
+            console.error('Supabase error in getActiveUsersList:', error);
+            // It's better to throw the error or return a structured error response
+            // rather than just the error object, to be handled by the API layer.
+            return { success: false, message: 'Failed to fetch active users: ' + error.message, status: error.status || 500 };
+        }
+
+        return { success: true, data: data || [] }; // Ensure data is an array, even if null
+
+    } catch (error) {
+        console.error('Unexpected error in getActiveUsersList service:', error);
+        return { success: false, message: 'An unexpected error occurred while fetching active users.', status: 500 };
+    }
+}
