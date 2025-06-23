@@ -468,8 +468,7 @@ async function getAllServersForAdmin() {
                 room_type,
                 created_at,
                 last_active_at,
-                creator_id,
-                creator_profile:user_profiles!creator_id:id(username)
+                creator_id
             `)
             .order('created_at', { ascending: false });
 
@@ -479,34 +478,53 @@ async function getAllServersForAdmin() {
         }
 
         // Post-process to include member counts (example, can be optimized)
-        // This is N+1 query pattern, not ideal for large number of rooms.
-        // A better approach might involve a view or a more complex SQL query if performance becomes an issue.
-        const roomsWithMemberCounts = await Promise.all(
-            (rooms || []).map(async (room) => {
+        if (!rooms || rooms.length === 0) {
+            return { success: true, data: [] };
+        }
+
+        // Step 1: Collect all unique creator_ids
+        const creatorIds = [...new Set(rooms.map(room => room.creator_id).filter(id => id))];
+        let creatorMap = new Map();
+
+        if (creatorIds.length > 0) {
+            const { data: creatorProfiles, error: creatorsError } = await supabase
+                .from('user_profiles')
+                .select('id, username')
+                .in('id', creatorIds);
+
+            if (creatorsError) {
+                console.error('Failed to fetch creator profiles for admin server list:', creatorsError);
+                // Proceed without creator usernames if this fails, or handle error more strictly
+            } else if (creatorProfiles) {
+                creatorMap = new Map(creatorProfiles.map(p => [p.id, p.username]));
+            }
+        }
+
+        // Step 2: Augment rooms with creator username and fetch member counts
+        const augmentedRooms = await Promise.all(
+            rooms.map(async (room) => {
                 const { count, error: countError } = await supabase
                     .from('room_members')
                     .select('user_id', { count: 'exact', head: true })
                     .eq('room_id', room.id);
 
+                let member_count = 0; // Default to 0 if count fails or no members
                 if (countError) {
                     console.warn(`Failed to get member count for room ${room.id}:`, countError.message);
+                    member_count = 'Error';
+                } else {
+                    member_count = count;
                 }
+
                 return {
                     ...room,
-                    creator_username: room.creator_profile?.username || 'N/A', // Handle if profile is null
-                    member_count: countError ? 'Error' : count,
+                    creatorUsername: room.creator_id ? (creatorMap.get(room.creator_id) || '未知用户') : '无创建者',
+                    member_count: member_count,
                 };
             })
         );
 
-        // Clean up the creator_profile object if desired, or keep it nested
-        const finalRooms = roomsWithMemberCounts.map(room => {
-            const { creator_profile, ...rest } = room;
-            return rest;
-        });
-
-
-        return { success: true, data: finalRooms };
+        return { success: true, data: augmentedRooms };
 
     } catch (error) {
         console.error('Unknown error in getAllServersForAdmin service:', error);

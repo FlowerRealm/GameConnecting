@@ -24,19 +24,42 @@ router.get('/users', authenticateToken, isAdmin, async (req, res) => {
                 created_at,
                 admin_note,
                 approved_at,
-                approvedByUser:user_profiles!approved_by:id(username)
+                approved_by
             `, { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
         if (error) throw error;
 
+        let augmentedUsers = users || [];
+        if (augmentedUsers.length > 0) {
+            const approverIds = [...new Set(augmentedUsers.map(u => u.approved_by).filter(id => id))];
+
+            if (approverIds.length > 0) {
+                const { data: approverProfiles, error: approversError } = await supabase
+                    .from('user_profiles')
+                    .select('id, username')
+                    .in('id', approverIds);
+
+                if (approversError) {
+                    console.error('Failed to fetch approver profiles:', approversError);
+                    // Decide if this is a fatal error or if we can proceed without approver usernames
+                } else if (approverProfiles) {
+                    const approverMap = new Map(approverProfiles.map(p => [p.id, p.username]));
+                    augmentedUsers = augmentedUsers.map(u => ({
+                        ...u,
+                        approvedByUsername: u.approved_by ? (approverMap.get(u.approved_by) || '未知用户') : null
+                    }));
+                }
+            }
+        }
+
         const totalPages = Math.ceil((count || 0) / limit);
 
         res.json({
             success: true,
             data: {
-                users: users || [],
+                users: augmentedUsers,
                 total: count || 0,
                 page,
                 totalPages,
