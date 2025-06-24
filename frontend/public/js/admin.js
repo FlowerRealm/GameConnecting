@@ -385,11 +385,32 @@ async function handleOrgMembershipReview(event) {
 async function loadOrganizations() {
     try {
         const response = await apiService.request('/api/admin/organizations');
-        if (response.success && response.data) {
-            renderOrganizations(response.data);
+        // Backend returns: { success: true, data: { organizations: [], total: ..., page: ..., totalPages: ..., limit: ... }, message: ... }
+        // So, the actual organizations array is in response.data.organizations
+        if (response.success && response.data && response.data.organizations) {
+            if (Array.isArray(response.data.organizations)) {
+                renderOrganizations(response.data.organizations);
+                // If pagination for organizations is desired, pass response.data to renderOrganizations
+                // or handle pagination data (response.data.total, response.data.page etc.) here.
+                // For now, loadOrganizations clears pagination, so this is consistent.
+            } else {
+                console.error('Expected response.data.organizations to be an array, but received:', response.data.organizations);
+                document.getElementById('userTable').innerHTML = '<p class="error-message">组织列表数据格式不正确 (nested data is not array).</p>';
+                showError('组织列表数据格式不正确 (nested data is not array).', 'error');
+            }
         } else {
-            showError(response.message || '获取组织列表失败');
-            document.getElementById('userTable').innerHTML = '<p class="error-message">无法加载组织列表。</p>';
+            let errorMessage = '获取组织列表失败';
+            if (response.data && response.data.message) {
+                errorMessage += `: ${response.data.message}`;
+            } else if (response.message) {
+                 if (!(response.message === "请求失败，请稍后重试" && response.data && response.data.message)) {
+                        errorMessage += `: ${response.message}`;
+                    }
+            } else {
+                errorMessage += ': 未知错误或数据结构不匹配。';
+            }
+            showError(errorMessage);
+            document.getElementById('userTable').innerHTML = `<p class="error-message">${errorMessage}</p>`;
         }
     } catch (error) {
         console.error('Error loading organizations:', error);
