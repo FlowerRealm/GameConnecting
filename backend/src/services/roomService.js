@@ -455,12 +455,20 @@ export {
 
 /**
  * Fetches all rooms with extended information for admin view.
- * Includes creator's username and potentially member count.
- * @returns {Promise<object>} Result object with success status, data, or error.
+ * Includes creator's username and member count.
+ * Supports pagination.
+ * @param {object} queryParams - Pagination parameters { page, limit }.
+ * @returns {Promise<object>} Result object with success status, paginated data, or error.
  */
-async function getAllServersForAdmin() {
+async function getAllServersForAdmin(queryParams = {}) {
+    const page = parseInt(queryParams.page) || 1;
+    const defaultLimit = 10; // Or get from a config
+    const limit = parseInt(queryParams.limit) || defaultLimit;
+    const offset = (page - 1) * limit;
+
     try {
-        const { data: rooms, error } = await supabase
+        // Fetch paginated rooms and total count
+        const { data: rooms, error, count } = await supabase
             .from('rooms')
             .select(`
                 id,
@@ -470,24 +478,29 @@ async function getAllServersForAdmin() {
                 created_at,
                 last_active_at,
                 creator_id
-            `)
-            .order('created_at', { ascending: false });
+            `, { count: 'exact' }) // Added count option
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1); // Added range for pagination
 
         if (error) {
             console.error('Error fetching all rooms for admin in service:', error);
             return { success: false, error: { status: 500, message: error.message || 'Failed to fetch rooms for admin.' } };
         }
 
-        // Post-process to include member counts (example, can be optimized)
         if (!rooms || rooms.length === 0) {
-            return { success: true, data: [] };
+            return {
+                success: true,
+                data: {
+                    servers: [],
+                    total: 0,
+                    page,
+                    totalPages: 0,
+                    limit
+                }
+            };
         }
 
-        if (!rooms || rooms.length === 0) {
-            return { success: true, data: [] };
-        }
-
-        // Step 1: Collect all unique creator_ids to fetch their usernames in one go
+        // Step 1: Collect all unique creator_ids from the paginated rooms to fetch their usernames
         const creatorIds = [...new Set(rooms.map(room => room.creator_id).filter(id => id))];
         let creatorUsernameMap = new Map();
         if (creatorIds.length > 0) {
@@ -541,7 +554,16 @@ async function getAllServersForAdmin() {
             member_count: memberCountMap.get(room.id) || 0,
         }));
 
-        return { success: true, data: augmentedRooms };
+        return {
+            success: true,
+            data: {
+                servers: augmentedRooms,
+                total: count || 0,
+                page,
+                totalPages: Math.ceil((count || 0) / limit),
+                limit
+            }
+        };
 
     } catch (error) {
         console.error('Unknown error in getAllServersForAdmin service:', error);

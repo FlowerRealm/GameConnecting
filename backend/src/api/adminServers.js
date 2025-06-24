@@ -11,12 +11,21 @@ import {
 
 const router = express.Router();
 
-// GET /api/admin/servers - List all servers for admin view
+// GET /api/admin/servers - List all servers for admin view (with pagination)
 router.get('/', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const result = await getAllServersForAdmin();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10; // Default limit to 10
+
+        const result = await getAllServersForAdmin({ page, limit });
+
         if (result.success) {
-            res.json({ success: true, data: result.data });
+            // The service now returns an object like { servers: [], total: ..., page: ..., ... } in result.data
+            res.json({
+                success: true,
+                data: result.data, // This correctly passes the whole pagination object
+                message: result.message || "Servers retrieved successfully."
+            });
         } else {
             res.status(result.error?.status || 500).json({ success: false, message: result.error?.message || 'Failed to fetch servers for admin.' });
         }
