@@ -385,32 +385,39 @@ async function handleOrgMembershipReview(event) {
 async function loadOrganizations() {
     try {
         const response = await apiService.request('/api/admin/organizations');
-        // Backend returns: { success: true, data: { organizations: [], total: ..., page: ..., totalPages: ..., limit: ... }, message: ... }
-        // So, the actual organizations array is in response.data.organizations
-        if (response.success && response.data && response.data.organizations) {
-            if (Array.isArray(response.data.organizations)) {
-                renderOrganizations(response.data.organizations);
-                // If pagination for organizations is desired, pass response.data to renderOrganizations
-                // or handle pagination data (response.data.total, response.data.page etc.) here.
-                // For now, loadOrganizations clears pagination, so this is consistent.
-            } else {
-                console.error('Expected response.data.organizations to be an array, but received:', response.data.organizations);
-                document.getElementById('userTable').innerHTML = '<p class="error-message">组织列表数据格式不正确 (nested data is not array).</p>';
-                showError('组织列表数据格式不正确 (nested data is not array).', 'error');
-            }
+
+        if (response.success && response.data && response.data.organizations && Array.isArray(response.data.organizations)) {
+            renderOrganizations(response.data.organizations);
+            // If response.data.message exists and indicates success, it's usually not displayed as a notification.
+            // showError(response.data.message, 'success'); // Optional: if you want to show success messages
         } else {
-            let errorMessage = '获取组织列表失败';
-            if (response.data && response.data.message) {
-                errorMessage += `: ${response.data.message}`;
-            } else if (response.message) {
-                 if (!(response.message === "请求失败，请稍后重试" && response.data && response.data.message)) {
-                        errorMessage += `: ${response.message}`;
-                    }
+            // Error path: either API call failed, or data structure is wrong
+            let clientErrorMessage = '获取组织列表失败'; // Default client-side error prefix
+
+            if (response.success && response.data) {
+                // API call was "successful" (e.g. HTTP 200) but data is malformed client-side
+                if (!response.data.organizations) {
+                    clientErrorMessage = '获取组织列表失败：响应中缺少组织数据。';
+                } else if (!Array.isArray(response.data.organizations)) {
+                    clientErrorMessage = '获取组织列表失败：组织数据格式不正确（不是数组）。';
+                    console.error('Expected response.data.organizations to be an array, received:', response.data.organizations);
+                }
+                // Do NOT append response.data.message or response.message if it's a success message from backend.
+                // However, if response.data.success is false, then response.data.message is an error.
+                if (response.data.success === false && response.data.message) {
+                    clientErrorMessage = response.data.message; // Use specific error from backend data payload
+                }
+
+            } else if (!response.success && response.message) {
+                // apiService itself marked it as not successful (e.g. HTTP error, network error)
+                // response.message should be an actual error message from apiService or backend
+                clientErrorMessage = response.message;
             } else {
-                errorMessage += ': 未知错误或数据结构不匹配。';
+                // Fallback for other unexpected scenarios
+                clientErrorMessage = '获取组织列表失败：未知错误或响应结构不匹配。';
             }
-            showError(errorMessage);
-            document.getElementById('userTable').innerHTML = `<p class="error-message">${errorMessage}</p>`;
+            showError(clientErrorMessage, 'error');
+            document.getElementById('userTable').innerHTML = `<p class="error-message">${clientErrorMessage}</p>`;
         }
     } catch (error) {
         console.error('Error loading organizations:', error);
