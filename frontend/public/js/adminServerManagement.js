@@ -32,8 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await apiService.request('/api/admin/servers', 'GET');
+            console.log('API Response for /api/admin/servers:', response); // Added log
             if (response.success && response.data) {
-                renderServerList(response.data);
+                // Ensure that response.data is actually the array of servers
+                if (Array.isArray(response.data)) {
+                    renderServerList(response.data);
+                } else {
+                    // If data is nested, e.g., response.data.servers
+                    // renderServerList(response.data.servers);
+                    // For now, log an error if it's not an array as expected by renderServerList
+                    console.error('Expected response.data to be an array of servers, but received:', response.data);
+                    serverListContainer.innerHTML = `<p class="error-message">服务器列表数据格式不正确。</p>`;
+                    store.addNotification('服务器列表数据格式不正确。', 'error');
+                }
             } else {
                 serverListContainer.innerHTML = `<p class="error-message">无法加载服务器列表: ${response.message || '未知错误'}</p>`;
                 store.addNotification(`无法加载服务器列表: ${response.message || '未知错误'}`, 'error');
@@ -74,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = server.id;
             row.insertCell().textContent = server.name;
             row.insertCell().textContent = server.room_type;
-            row.insertCell().textContent = server.creator_username || 'N/A';
+            row.insertCell().textContent = server.creatorUsername || 'N/A'; // Corrected field name
             row.insertCell().textContent = server.member_count !== undefined ? server.member_count : 'N/A';
             row.insertCell().textContent = new Date(server.created_at).toLocaleString();
             row.insertCell().textContent = new Date(server.last_active_at).toLocaleString();

@@ -176,7 +176,7 @@ function renderUsers(data) {
             const status = getStatusBadge(user.status);
             const date = new Date(user.createdAt || user.created_at).toLocaleString('zh-CN'); // Handle both casings
             const reviewInfo = user.approvedAt || user.approved_at
-                ? `${new Date(user.approvedAt || user.approved_at).toLocaleString('zh-CN')}<br><small>(${user.approvedByUser?.username || '未知'})</small>`
+                ? `${new Date(user.approvedAt || user.approved_at).toLocaleString('zh-CN')}<br><small>(${user.approvedByUsername || '未知'})</small>`
                 : '-';
 
             html += `

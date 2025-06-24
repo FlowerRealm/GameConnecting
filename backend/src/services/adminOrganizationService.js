@@ -1,7 +1,6 @@
-import { supabase } from '../supabaseClient.js'; // Using standard client for most admin tasks for simplicity
-                                            // unless specific admin-only operations are needed that bypass RLS.
-                                            // For this task, assuming RLS allows admins to perform these.
-                                            // If not, supabaseAdminClient would be used.
+import { supabaseAdmin } from '../supabaseAdminClient.js'; // Changed to use supabaseAdmin client
+// Using supabaseAdmin client for all operations in this service to ensure admin privileges
+// and bypass RLS if necessary for admin-level data access.
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -16,7 +15,7 @@ export async function listAllOrganizations(queryParams = {}) {
     const offset = (page - 1) * limit;
 
     try {
-        const { data, error, count } = await supabase
+        const { data, error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
@@ -48,7 +47,7 @@ export async function listAllOrganizations(queryParams = {}) {
  */
 export async function getOrganizationById(orgId) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .select('*')
             .eq('id', orgId)
@@ -76,7 +75,7 @@ export async function getOrganizationById(orgId) {
 export async function createOrganization(orgData, creatorId) {
     const { name, description, is_publicly_listable = true } = orgData;
     try {
-        const { data: newOrganization, error } = await supabase
+        const { data: newOrganization, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .insert([{
                 name,
@@ -91,7 +90,7 @@ export async function createOrganization(orgData, creatorId) {
 
         // Optionally, add creator as an org_admin to user_organization_memberships
         if (newOrganization) {
-            const { error: memberError } = await supabase
+            const { error: memberError } = await supabaseAdmin // Changed to supabaseAdmin
                 .from('user_organization_memberships')
                 .insert({
                     user_id: creatorId,
@@ -120,7 +119,7 @@ export async function createOrganization(orgData, creatorId) {
  */
 export async function updateOrganization(orgId, updateData) {
     try {
-        const { data: updatedOrganization, error } = await supabase
+        const { data: updatedOrganization, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .update(updateData)
             .eq('id', orgId)
@@ -145,7 +144,7 @@ export async function updateOrganization(orgId, updateData) {
  */
 export async function deleteOrganization(orgId) {
     try {
-        const { error, count } = await supabase
+        const { error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .delete({ count: 'exact' })
             .eq('id', orgId);
@@ -172,7 +171,7 @@ export async function listOrganizationMembers(orgId, queryParams = {}) {
     const offset = (page - 1) * limit;
 
     try {
-        const { data, error, count } = await supabase
+        const { data, error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .select(`
                 user_id,
@@ -221,7 +220,7 @@ export async function listOrganizationMembers(orgId, queryParams = {}) {
  */
 export async function addOrganizationMember(orgId, userId, role_in_org) {
     try {
-        const { data: newMembership, error } = await supabase
+        const { data: newMembership, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .insert([{
                 organization_id: orgId,
@@ -258,7 +257,7 @@ export async function updateOrganizationMember(orgId, userId, memberData) {
     }
 
     try {
-        const { data: updatedMembership, error } = await supabase
+        const { data: updatedMembership, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .update(updatePayload)
             .eq('organization_id', orgId)
@@ -285,7 +284,7 @@ export async function updateOrganizationMember(orgId, userId, memberData) {
  */
 export async function removeOrganizationMember(orgId, userId) {
     try {
-        const { error, count } = await supabase
+        const { error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .delete({ count: 'exact' })
             .eq('organization_id', orgId)
@@ -307,7 +306,7 @@ export async function removeOrganizationMember(orgId, userId) {
  */
 export async function listPublicOrganizations() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin // Changed to supabaseAdmin for consistency, though public might use anon client
             .from('organizations')
             .select('id, name, description') // Select only specific fields for public view
             .eq('is_publicly_listable', true)
@@ -341,7 +340,7 @@ export async function listPendingMemberships(queryParams = {}) {
     const offset = (page - 1) * limit;
 
     try {
-        const { data, error, count } = await supabase
+        const { data, error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .select(`
                 id,
