@@ -157,15 +157,16 @@ async function updateServerByAdmin(roomId, updates) {
         return { success: false, error: { status: 400, message: 'Room ID and updates object are required and updates cannot be empty.' } };
     }
 
-    const allowedUpdates = ['name', 'description', 'room_type'];
+    const allowedUpdates = ['name', 'description']; // Removed 'room_type'
     const validUpdates = {};
     let hasInvalidField = false;
 
     for (const key in updates) {
         if (allowedUpdates.includes(key)) {
-            if (key === 'room_type' && !['public', 'private'].includes(updates[key])) {
-                return { success: false, error: { status: 400, message: "Invalid room_type. Must be 'public' or 'private'." } };
-            }
+            // Removed room_type specific validation as it's no longer an allowed update here.
+            // if (key === 'room_type' && !['public', 'private'].includes(updates[key])) {
+            //     return { success: false, error: { status: 400, message: "Invalid room_type. Must be 'public' or 'private'." } };
+            // }
             if (key === 'name' && (typeof updates[key] !== 'string' || updates[key].trim().length < 3 || updates[key].trim().length > 100)) {
                 return { success: false, error: { status: 400, message: "Name must be a string between 3 and 100 characters." } };
             }

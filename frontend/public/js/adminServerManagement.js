@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const serverModalTitle = document.getElementById('serverModalTitle');
     const serverNameInput = document.getElementById('serverName');
     const serverDescriptionInput = document.getElementById('serverDescription');
-    const serverTypeInput = document.getElementById('serverType');
+    // const serverTypeInput = document.getElementById('serverType'); // Removed
     const serverForm = document.getElementById('serverForm');
     const closeServerModalBtn = document.getElementById('closeServerModalBtn');
     const serverIdInput = document.getElementById('serverId'); // Hidden input for server ID in edit mode
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate form fields
         serverNameInput.value = server.name;
         serverDescriptionInput.value = server.description || '';
-        serverTypeInput.value = server.room_type;
+        // serverTypeInput.value = server.room_type; // Removed
 
         serverModal.style.display = 'block';
     }
@@ -214,8 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Prepare data for API (only send relevant fields for update)
             const payload = {
                 name: serverDataFromForm.name,
-                description: serverDataFromForm.description,
-                room_type: serverDataFromForm.room_type
+                description: serverDataFromForm.description
+                // room_type is no longer sent from the form
             };
 
             const currentServerId = serverIdInput.value; // This is reliable now
