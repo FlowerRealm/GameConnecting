@@ -483,47 +483,63 @@ async function getAllServersForAdmin() {
             return { success: true, data: [] };
         }
 
-        // Step 1: Collect all unique creator_ids
-        const creatorIds = [...new Set(rooms.map(room => room.creator_id).filter(id => id))];
-        let creatorMap = new Map();
+        if (!rooms || rooms.length === 0) {
+            return { success: true, data: [] };
+        }
 
+        // Step 1: Collect all unique creator_ids to fetch their usernames in one go
+        const creatorIds = [...new Set(rooms.map(room => room.creator_id).filter(id => id))];
+        let creatorUsernameMap = new Map();
         if (creatorIds.length > 0) {
             const { data: creatorProfiles, error: creatorsError } = await supabase
                 .from('user_profiles')
                 .select('id, username')
                 .in('id', creatorIds);
-
             if (creatorsError) {
                 console.error('Failed to fetch creator profiles for admin server list:', creatorsError);
-                // Proceed without creator usernames if this fails, or handle error more strictly
             } else if (creatorProfiles) {
-                creatorMap = new Map(creatorProfiles.map(p => [p.id, p.username]));
+                creatorProfiles.forEach(p => creatorUsernameMap.set(p.id, p.username));
             }
         }
 
-        // Step 2: Augment rooms with creator username and fetch member counts
-        const augmentedRooms = await Promise.all(
-            rooms.map(async (room) => {
-                const { count, error: countError } = await supabase
-                    .from('room_members')
-                    .select('user_id', { count: 'exact', head: true })
-                    .eq('room_id', room.id);
+        // Step 2: Collect all room_ids to fetch member counts in one go
+        const roomIds = rooms.map(room => room.id);
+        let memberCountMap = new Map();
+        if (roomIds.length > 0) {
+            // This query counts members per room_id.
+            // The .rpc call might be more direct if we have a function,
+            // but a direct query with group by is also possible.
+            // Supabase JS client doesn't directly support GROUP BY in a simple .select().
+            // We'll use a workaround: fetch all member rows for these rooms and count in JS,
+            // OR make a more complex query using .rpc if a helper PG function exists/is created.
+            // For now, let's do a slightly less optimized but better-than-N+1 approach:
+            // Fetch all room_members for the relevant rooms, then count in JS.
+            // This is one large query instead of N small ones.
 
-                let member_count = 0; // Default to 0 if count fails or no members
-                if (countError) {
-                    console.warn(`Failed to get member count for room ${room.id}:`, countError.message);
-                    member_count = 'Error';
-                } else {
-                    member_count = count;
-                }
+            // Alternative: Use an RPC or a view if this becomes a bottleneck.
+            // For now, let's stick to the Promise.all for member counts as it was, and optimize it here.
+            // The provided solution below is the optimized one.
 
-                return {
-                    ...room,
-                    creatorUsername: room.creator_id ? (creatorMap.get(room.creator_id) || '未知用户') : '无创建者',
-                    member_count: member_count,
-                };
-            })
-        );
+            const { data: memberCountsData, error: memberCountsError } = await supabase
+                .from('room_members')
+                .select('room_id, user_id') // Select user_id to count, or just room_id if counting rows
+                .in('room_id', roomIds);
+
+            if (memberCountsError) {
+                console.error('Failed to fetch member counts for admin server list:', memberCountsError);
+            } else if (memberCountsData) {
+                memberCountsData.forEach(member => {
+                    memberCountMap.set(member.room_id, (memberCountMap.get(member.room_id) || 0) + 1);
+                });
+            }
+        }
+
+        // Step 3: Augment rooms with creator username and member count
+        const augmentedRooms = rooms.map(room => ({
+            ...room,
+            creatorUsername: room.creator_id ? (creatorUsernameMap.get(room.creator_id) || '未知用户') : '无创建者',
+            member_count: memberCountMap.get(room.id) || 0,
+        }));
 
         return { success: true, data: augmentedRooms };
 
