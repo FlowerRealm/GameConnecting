@@ -385,6 +385,7 @@ async function handleOrgMembershipReview(event) {
 async function loadOrganizations() {
     try {
         const response = await apiService.request('/api/admin/organizations');
+        console.log('Full response from /api/admin/organizations:', JSON.stringify(response, null, 2)); // Added detailed log
 
         if (response.success && response.data && response.data.organizations && Array.isArray(response.data.organizations)) {
             renderOrganizations(response.data.organizations);
