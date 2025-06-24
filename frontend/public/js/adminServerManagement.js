@@ -32,22 +32,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await apiService.request('/api/admin/servers', 'GET');
-            console.log('API Response for /api/admin/servers:', response); // Added log
-            if (response.success && response.data) {
-                // Ensure that response.data is actually the array of servers
-                if (Array.isArray(response.data)) {
-                    renderServerList(response.data);
+            // console.log('API Response for /api/admin/servers:', response); // Kept for debugging if needed
+
+            // Expected structure from backend: { success: true, data: SERVER_ARRAY_HERE }
+            // apiService.js might wrap this, let's assume apiService returns:
+            // { success: true (http ok), data: { success: true (backend ok), data: SERVER_ARRAY_HERE }, message?, statusCode? }
+            // OR if apiService directly returns the backend's JSON:
+            // { success: true (backend ok), data: SERVER_ARRAY_HERE }
+
+            // The log showed: response = {success: true, data: { data: [], success: true }, message: ..., statusCode: ...}
+            // So, the actual server array is in response.data.data
+
+            if (response.success && response.data && response.data.data !== undefined) {
+                if (Array.isArray(response.data.data)) {
+                    renderServerList(response.data.data); // Pass the nested array
                 } else {
-                    // If data is nested, e.g., response.data.servers
-                    // renderServerList(response.data.servers);
-                    // For now, log an error if it's not an array as expected by renderServerList
-                    console.error('Expected response.data to be an array of servers, but received:', response.data);
-                    serverListContainer.innerHTML = `<p class="error-message">服务器列表数据格式不正确。</p>`;
-                    store.addNotification('服务器列表数据格式不正确。', 'error');
+                    console.error('Expected response.data.data to be an array of servers, but received:', response.data.data);
+                    serverListContainer.innerHTML = `<p class="error-message">服务器列表数据格式不正确 (nested data is not array).</p>`;
+                    store.addNotification('服务器列表数据格式不正确 (nested data is not array)。', 'error');
                 }
             } else {
-                serverListContainer.innerHTML = `<p class="error-message">无法加载服务器列表: ${response.message || '未知错误'}</p>`;
-                store.addNotification(`无法加载服务器列表: ${response.message || '未知错误'}`, 'error');
+                // Handle cases where response.data or response.data.data is missing or response.success is false
+                let errorMessage = '无法加载服务器列表';
+                // Prioritize message from the deepest part of the response if available
+                if (response.data && response.data.message) {
+                     errorMessage += `: ${response.data.message}`;
+                } else if (response.message) {
+                    // Avoid showing "请求失败，请稍后重试" if it's just a generic wrapper message and a more specific one is available
+                    if (!(response.message === "请求失败，请稍后重试" && response.data && response.data.message)) {
+                        errorMessage += `: ${response.message}`;
+                    }
+                } else {
+                    errorMessage += ': 未知错误或数据结构不匹配。';
+                }
+                serverListContainer.innerHTML = `<p class="error-message">${errorMessage}</p>`;
+                store.addNotification(errorMessage, 'error');
             }
         } catch (error) {
             console.error('Error fetching servers:', error);
