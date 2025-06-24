@@ -349,7 +349,7 @@ export async function listPendingMemberships(queryParams = {}) {
                 role_in_org,
                 status_in_org,
                 created_at,
-                user_profiles ( username, email ),
+                user_profiles ( username ),
                 organizations ( name )
             `, { count: 'exact' })
             .eq('status_in_org', 'pending_approval')
@@ -365,7 +365,7 @@ export async function listPendingMemberships(queryParams = {}) {
             membershipId: req.id,
             userId: req.user_id,
             username: req.user_profiles?.username,
-            userEmail: req.user_profiles?.email,
+            // userEmail: req.user_profiles?.email, // Removed email as it's not in user_profiles
             organizationId: req.organization_id,
             organizationName: req.organizations?.name,
             requestedRole: req.role_in_org,
