@@ -56,7 +56,7 @@ app.use(cors(corsOptions));
 
 // Optional: Handle preflight requests across all routes,
 // though app.use(cors(corsOptions)) should generally cover this for subsequent routes.
-// app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); // Ensure preflight requests are explicitly handled
 
 const verifyApiKey = (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
