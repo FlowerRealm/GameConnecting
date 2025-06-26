@@ -20,9 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const serverListContainer = document.getElementById('serverListContainer');
     const createServerBtn = document.getElementById('createServerBtn');
-    // Modals and form elements will be accessed later
+    const paginationContainer = document.getElementById('serverListPagination');
 
-    async function loadAndDisplayServers() {
+    let currentPage = 1;
+    const itemsPerPage = 10; // Or make this configurable if needed
+    let totalItems = 0;
+    let totalPages = 1;
+
+
+    async function loadAndDisplayServers(page = 1) {
+        currentPage = page; // Update current page state
         if (!serverListContainer) {
             console.error('Server list container not found in the DOM.');
             store.addNotification('页面错误：无法找到服务器列表容器。', 'error');
@@ -40,26 +47,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // OR if apiService directly returns the backend's JSON:
             // { success: true (backend ok), data: SERVER_ARRAY_HERE }
 
-            // The log showed: response = {success: true, data: { data: [], success: true }, message: ..., statusCode: ...}
-            // So, the actual server array is in response.data.data
+            // console.log('API Response for /api/admin/servers:', response);
 
-            if (response.success && response.data && response.data.data !== undefined) {
-                if (Array.isArray(response.data.data)) {
-                    renderServerList(response.data.data); // Pass the nested array
+            // Backend returns { success: true, data: { servers: [], total: ..., page: ..., totalPages: ..., limit: ... } }
+            if (response.success && response.data && response.data.servers) {
+                if (Array.isArray(response.data.servers)) {
+                    totalItems = response.data.total || 0;
+                    totalPages = response.data.totalPages || 1;
+                    currentPage = response.data.page || 1; // Ensure currentPage state is updated from response
+
+                    renderServerList(response.data.servers);
+                    renderPaginationControls();
                 } else {
-                    console.error('Expected response.data.data to be an array of servers, but received:', response.data.data);
-                    serverListContainer.innerHTML = `<p class="error-message">服务器列表数据格式不正确 (nested data is not array).</p>`;
-                    store.addNotification('服务器列表数据格式不正确 (nested data is not array)。', 'error');
+                    console.error('Expected response.data.servers to be an array, but received:', response.data.servers);
+                    serverListContainer.innerHTML = `<p class="error-message">服务器列表数据格式不正确。</p>`;
+                    store.addNotification('服务器列表数据格式不正确。', 'error');
                 }
             } else {
-                // Handle cases where response.data or response.data.data is missing or response.success is false
                 let errorMessage = '无法加载服务器列表';
-                // Prioritize message from the deepest part of the response if available
                 if (response.data && response.data.message) {
                      errorMessage += `: ${response.data.message}`;
                 } else if (response.message) {
-                    // Avoid showing "请求失败，请稍后重试" if it's just a generic wrapper message and a more specific one is available
-                    if (!(response.message === "请求失败，请稍后重试" && response.data && response.data.message)) {
+                     if (!(response.message === "请求失败，请稍后重试" && response.data && response.data.message)) {
                         errorMessage += `: ${response.message}`;
                     }
                 } else {
@@ -67,19 +76,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 serverListContainer.innerHTML = `<p class="error-message">${errorMessage}</p>`;
                 store.addNotification(errorMessage, 'error');
+                if (paginationContainer) paginationContainer.innerHTML = ''; // Clear pagination on error too
             }
         } catch (error) {
             console.error('Error fetching servers:', error);
             serverListContainer.innerHTML = '<p class="error-message">加载服务器列表时发生网络或服务器错误。</p>';
             store.addNotification('加载服务器列表时发生网络或服务器错误。', 'error');
+            if (paginationContainer) paginationContainer.innerHTML = ''; // Clear pagination on error too
         }
     }
 
     function renderServerList(servers) {
-        if (servers.length === 0) {
+        if (!serverListContainer) return; // Should have been caught by loadAndDisplayServers
+
+        if (servers.length === 0 && currentPage === 1) { // Only show "no servers" if on page 1 and it's truly empty
             serverListContainer.innerHTML = '<p>目前没有服务器。</p>';
+            if (paginationContainer) paginationContainer.innerHTML = ''; // Clear pagination if no servers
             return;
         }
+        // If not page 1 and servers is empty, it means user paged beyond available data,
+        // pagination controls should ideally prevent this, or show a message.
+        // For now, an empty table will be rendered if servers is empty on non-first page.
 
         const table = document.createElement('table');
         table.className = 'admin-table'; // For styling
