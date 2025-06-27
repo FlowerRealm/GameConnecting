@@ -385,38 +385,45 @@ async function handleOrgMembershipReview(event) {
 async function loadOrganizations() {
     try {
         const response = await apiService.request('/api/admin/organizations');
-        console.log('Full response from /api/admin/organizations:', JSON.stringify(response, null, 2)); // Added detailed log
+        // console.log('Full response from /api/admin/organizations:', JSON.stringify(response, null, 2)); // Keep for debugging if necessary
 
-        if (response.success && response.data && response.data.organizations && Array.isArray(response.data.organizations)) {
-            renderOrganizations(response.data.organizations);
-            // If response.data.message exists and indicates success, it's usually not displayed as a notification.
-            // showError(response.data.message, 'success'); // Optional: if you want to show success messages
+        // Corrected access path based on the log: response.data.data.organizations
+        if (response.success &&
+            response.data &&
+            response.data.data && // Check for the nested 'data' object from backend
+            Array.isArray(response.data.data.organizations)) { // Check if 'organizations' array exists and is an array
+
+            renderOrganizations(response.data.data.organizations);
+            // Pagination data would be in response.data.data.total, response.data.data.page etc.
+            // Currently, loadOrganizations clears pagination. If pagination is needed for orgs,
+            // this is where it would be set up, similar to renderUsers.
+
         } else {
-            // Error path: either API call failed, or data structure is wrong
-            let clientErrorMessage = '获取组织列表失败'; // Default client-side error prefix
+            // Error handling:
+            let clientErrorMessage = '获取组织列表失败';
 
-            if (response.success && response.data) {
-                // API call was "successful" (e.g. HTTP 200) but data is malformed client-side
-                if (!response.data.organizations) {
-                    clientErrorMessage = '获取组织列表失败：响应中缺少组织数据。';
-                } else if (!Array.isArray(response.data.organizations)) {
-                    clientErrorMessage = '获取组织列表失败：组织数据格式不正确（不是数组）。';
-                    console.error('Expected response.data.organizations to be an array, received:', response.data.organizations);
-                }
-                // Do NOT append response.data.message or response.message if it's a success message from backend.
-                // However, if response.data.success is false, then response.data.message is an error.
-                if (response.data.success === false && response.data.message) {
-                    clientErrorMessage = response.data.message; // Use specific error from backend data payload
-                }
-
-            } else if (!response.success && response.message) {
-                // apiService itself marked it as not successful (e.g. HTTP error, network error)
-                // response.message should be an actual error message from apiService or backend
+            if (!response.success && response.message) {
+                // Error reported by apiService (e.g., network error, HTTP error status from apiService itself)
                 clientErrorMessage = response.message;
-            } else {
-                // Fallback for other unexpected scenarios
-                clientErrorMessage = '获取组织列表失败：未知错误或响应结构不匹配。';
+            } else if (response.data && response.data.success === false && response.data.message) {
+                // Backend reported success:false with a message (nested within apiService's response.data)
+                clientErrorMessage = response.data.message;
+            } else if (response.data && response.data.data && !Array.isArray(response.data.data.organizations)) {
+                // Data structure is not as expected (organizations is not an array)
+                clientErrorMessage = '获取组织列表失败：组织数据格式不正确。';
+                console.error('Expected response.data.data.organizations to be an array, received:', response.data.data.organizations);
+            } else if (response.data && !response.data.data) {
+                // The nested 'data' object (that should contain organizations array) is missing
+                clientErrorMessage = '获取组织列表失败：响应中缺少预期的组织数据结构。';
+            } else if (response.success && response.data && !response.data.data.organizations) {
+                 // The organizations array itself is missing from the nested data object
+                clientErrorMessage = '获取组织列表失败：响应数据中缺少组织列表。';
             }
+            else {
+                // Fallback for other unexpected scenarios
+                clientErrorMessage = '获取组织列表失败：未知错误或响应不完整。';
+            }
+
             showError(clientErrorMessage, 'error');
             document.getElementById('userTable').innerHTML = `<p class="error-message">${clientErrorMessage}</p>`;
         }
