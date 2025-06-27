@@ -88,12 +88,7 @@ export async function createOrganization(orgData, creatorId) {
     try {
         const { data: newOrganization, error } = await supabaseAdmin
             .from('organizations')
-            .insert([orgInsertPayload])
-                name,
-                description,
-                is_publicly_listable,
-                created_by: creatorId
-            }])
+            .insert([orgInsertPayload]) // Correct: pass only the array with the payload object
             .select()
             .single();
 
