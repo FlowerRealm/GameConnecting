@@ -68,6 +68,33 @@
         </div>
     </div>
 
+    <!-- Create Organization Modal -->
+    <div id="createOrgModal" class="modal">
+        <div class="modal-content glassmorphic-container">
+            <h2 id="createOrgModalTitle">创建新组织</h2>
+            <form id="createOrgForm">
+                <div class="form-group">
+                    <label for="orgName">组织名称:</label>
+                    <input type="text" id="orgName" name="name" required minlength="3" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="orgDescription">描述:</label>
+                    <textarea id="orgDescription" name="description" maxlength="1000"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="orgIsPublic">
+                        <input type="checkbox" id="orgIsPublic" name="is_publicly_listable" checked>
+                        公开可见 (任何人都可以看到此组织并申请加入)
+                    </label>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-close" id="closeCreateOrgModalBtn">取消</button>
+                    <button type="submit" class="button primary-button">保存组织</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/js/admin.js" type="module"></script>
 </body>
 

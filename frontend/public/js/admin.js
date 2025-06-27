@@ -438,7 +438,13 @@ async function loadOrganizations() {
 
 function renderOrganizations(organizations) {
     const tableContainer = document.getElementById('userTable');
+    // Add a button for creating a new organization
     let html = `
+        <div class="admin-actions" style="margin-bottom: 1rem;">
+            <button id="createNewOrgBtn" class="button primary-button">
+                <i class="fas fa-plus-circle"></i> 创建新组织
+            </button>
+        </div>
         <div class="organizations-list-container">
             <h2>组织列表</h2>
             <ul class="organizations-list">
@@ -476,7 +482,90 @@ function renderOrganizations(organizations) {
             handleOrganizationClick(item.dataset.orgId, item.dataset.orgName);
         });
     });
+
+    // After rendering the list, attach event listener to the new "Create New Organization" button
+    const createNewOrgBtn = document.getElementById('createNewOrgBtn');
+    if (createNewOrgBtn) {
+        createNewOrgBtn.addEventListener('click', openCreateOrgModal);
+    }
 }
+
+// Placeholder for modal DOM elements (to be added to user.html or created dynamically)
+// Modal DOM elements for Create Organization (ensure these IDs match the HTML added in user.html)
+const createOrgModal = document.getElementById('createOrgModal');
+const createOrgForm = document.getElementById('createOrgForm');
+const closeCreateOrgModalBtn = document.getElementById('closeCreateOrgModalBtn');
+const orgNameInput = document.getElementById('orgName'); // Assuming ID in modal form
+const orgDescriptionInput = document.getElementById('orgDescription'); // Assuming ID in modal form
+const orgIsPublicCheckbox = document.getElementById('orgIsPublic'); // Assuming ID in modal form
+
+
+// Function to open the create organization modal
+function openCreateOrgModal() {
+    if (createOrgModal) {
+        // document.getElementById('createOrgModalTitle').textContent = '创建新组织'; // If title needs to be dynamic
+        if (createOrgForm) createOrgForm.reset(); // Reset form fields
+        // Ensure checkbox is set to its default (e.g., checked) if reset doesn't handle it
+        if (orgIsPublicCheckbox) orgIsPublicCheckbox.checked = true;
+        createOrgModal.style.display = 'block';
+    } else {
+        console.error('Create Organization Modal not found in DOM.');
+        alert('创建组织功能暂不可用，缺少模态框。');
+    }
+}
+
+// Function to close the create organization modal
+function closeCreateOrgModal() {
+    if (createOrgModal) {
+        createOrgModal.style.display = 'none';
+    }
+}
+
+// Attach event listeners for modal close
+if (closeCreateOrgModalBtn) {
+    closeCreateOrgModalBtn.addEventListener('click', closeCreateOrgModal);
+}
+// Close modal if user clicks outside of it (this listener should be added once, e.g. in DOMContentLoaded)
+// For simplicity, adding it here, but ensure it's managed correctly if there are multiple modals.
+// A more robust way would be a single window click listener that checks all active modals.
+window.addEventListener('click', (event) => {
+    if (event.target == createOrgModal) { // Check if the click is on the modal background itself
+        closeCreateOrgModal();
+    }
+});
+
+// Handle Create Organization Form Submission
+if (createOrgForm) {
+    createOrgForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const name = orgNameInput.value.trim();
+        const description = orgDescriptionInput.value.trim();
+        const is_publicly_listable = orgIsPublicCheckbox.checked;
+
+        if (!name || name.length < 3) {
+            showError('组织名称至少需要3个字符。', 'error');
+            return;
+        }
+
+        const payload = { name, description, is_publicly_listable };
+
+        try {
+            const response = await apiService.request('/api/admin/organizations', 'POST', payload);
+            if (response.success) {
+                showError('组织创建成功！', 'success');
+                closeCreateOrgModal();
+                loadOrganizations(); // Refresh the list of organizations
+            } else {
+                showError(response.message || '创建组织失败。', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating organization:', error);
+            showError('创建组织时发生错误。', 'error');
+        }
+    });
+}
+
 
 async function handleOrganizationClick(orgId, orgName) {
     const membersListDiv = document.getElementById('organizationMembersList');
