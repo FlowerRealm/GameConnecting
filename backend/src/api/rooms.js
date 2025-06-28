@@ -17,13 +17,15 @@ router.post('/create', authenticateToken, async (req, res) => {
         const { name, description, room_type } = req.body;
         const creatorId = req.user.userId; // Assuming authenticateToken sets req.user.userId
 
-        if (!name || !room_type) {
-            return res.status(400).json({ success: false, message: 'Room name and type are required.' });
+        if (!name) { // room_type is no longer strictly required here
+            return res.status(400).json({ success: false, message: 'Room name is required.' });
         }
-        if (!['public', 'private'].includes(room_type)) {
+        // Validate room_type only if it's provided by the client
+        if (room_type && !['public', 'private'].includes(room_type)) {
             return res.status(400).json({ success: false, message: "Invalid room type. Must be 'public' or 'private'." });
         }
 
+        // room_type might be undefined if not provided, service will use default 'public'
         const result = await createRoom(name, description, room_type, creatorId);
 
         if (result.success) {

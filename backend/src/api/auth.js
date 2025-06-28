@@ -12,16 +12,18 @@ const router = express.Router();
 // POST /register - User registration
 router.post('/register', async (req, res) => {
     try {
-        const { email, password, username, note, requestedOrganizationIds } = req.body;
+        const { password, username, note, requestedOrganizationIds } = req.body; // Email removed
 
-        if (!email || !password || !username) {
-            return res.status(400).json({ success: false, message: '邮箱、密码和用户名不能为空' });
+        if (!password || !username) { // Email check removed
+            return res.status(400).json({ success: false, message: '密码和用户名不能为空' }); // Message updated
         }
+
         if (password.length < 6) {
             return res.status(400).json({ success: false, message: '密码长度至少为6位' });
         }
 
-        const result = await registerUser(email, password, username, note, requestedOrganizationIds || []);
+        // Email removed from service call
+        const result = await registerUser(password, username, note, requestedOrganizationIds || []);
 
         if (result.success) {
             res.status(201).json({
@@ -35,7 +37,7 @@ router.post('/register', async (req, res) => {
     } catch (error) {
         // This catch block is for unexpected errors in the route handler itself,
         // or if the service throws an error not caught by its own try-catch.
-        console.error('注册路由未知错误:', error);
+        console.error('注册路由未知错误:', error); // Original log
         res.status(500).json({ success: false, message: `注册路由处理失败: ${error.message}` });
     }
 });
@@ -43,12 +45,12 @@ router.post('/register', async (req, res) => {
 // POST /login - User login
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: '邮箱和密码不能为空' });
+        const { username, password } = req.body; // Changed 'email' to 'username'
+        if (!username || !password) { // Changed 'email' to 'username'
+            return res.status(400).json({ success: false, message: '用户名和密码不能为空' }); // Updated message
         }
 
-        const result = await loginUser(email, password);
+        const result = await loginUser(username, password); // Changed 'email' to 'username'
 
         if (result.success) {
             res.json({
@@ -60,7 +62,7 @@ router.post('/login', async (req, res) => {
             res.status(result.error.status || 500).json({ success: false, message: result.error.message });
         }
     } catch (error) {
-        console.error('登录路由未知错误:', error);
+        console.error('登录路由未知错误:', error); // Original log
         res.status(500).json({ success: false, message: `登录路由处理失败: ${error.message}` });
     }
 });

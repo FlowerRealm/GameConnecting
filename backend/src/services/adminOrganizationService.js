@@ -1,7 +1,6 @@
-import { supabase } from '../supabaseClient.js'; // Using standard client for most admin tasks for simplicity
-                                            // unless specific admin-only operations are needed that bypass RLS.
-                                            // For this task, assuming RLS allows admins to perform these.
-                                            // If not, supabaseAdminClient would be used.
+import { supabaseAdmin } from '../supabaseAdminClient.js'; // Changed to use supabaseAdmin client
+// Using supabaseAdmin client for all operations in this service to ensure admin privileges
+// and bypass RLS if necessary for admin-level data access.
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -16,7 +15,7 @@ export async function listAllOrganizations(queryParams = {}) {
     const offset = (page - 1) * limit;
 
     try {
-        const { data, error, count } = await supabase
+        const { data, error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
@@ -48,7 +47,7 @@ export async function listAllOrganizations(queryParams = {}) {
  */
 export async function getOrganizationById(orgId) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .select('*')
             .eq('id', orgId)
@@ -74,41 +73,69 @@ export async function getOrganizationById(orgId) {
  * @returns {Promise<object>} Result object.
  */
 export async function createOrganization(orgData, creatorId) {
+    console.log('[createOrganization] Input orgData:', JSON.stringify(orgData, null, 2));
+    console.log('[createOrganization] Input creatorId:', creatorId);
+
     const { name, description, is_publicly_listable = true } = orgData;
+    const orgInsertPayload = {
+        name,
+        description,
+        is_publicly_listable,
+        created_by: creatorId
+    };
+    console.log('[createOrganization] Payload for organizations insert:', JSON.stringify(orgInsertPayload, null, 2));
+
     try {
-        const { data: newOrganization, error } = await supabase
+        const { data: newOrganization, error } = await supabaseAdmin
             .from('organizations')
-            .insert([{
-                name,
-                description,
-                is_publicly_listable,
-                created_by: creatorId
-            }])
+            .insert([orgInsertPayload]) // Correct: pass only the array with the payload object
             .select()
             .single();
 
-        if (error) throw error;
+        console.log('[createOrganization] Response from organizations insert - Error:', JSON.stringify(error, null, 2));
+        console.log('[createOrganization] Response from organizations insert - Data (newOrganization):', JSON.stringify(newOrganization, null, 2));
 
-        // Optionally, add creator as an org_admin to user_organization_memberships
-        if (newOrganization) {
-            const { error: memberError } = await supabase
-                .from('user_organization_memberships')
-                .insert({
-                    user_id: creatorId,
-                    organization_id: newOrganization.id,
-                    role_in_org: 'org_admin',
-                    status_in_org: 'approved'
-                });
-            if (memberError) {
-                console.warn(`Failed to add creator as admin to new org ${newOrganization.id}: ${memberError.message}`);
-                // Non-fatal, org was created. Could add compensation logic if critical.
-            }
+        if (error) {
+            console.error('[createOrganization] Error during organizations insert, throwing now.');
+            throw error;
         }
 
-        return { success: true, data: newOrganization, message: "Organization created successfully.", status: 201 };
+        if (!newOrganization) {
+            // This case means newOrganization was null/undefined even if no explicit 'error' was thrown by Supabase client
+            console.error('[createOrganization] Organization insert seemed to succeed but no data (newOrganization) was returned.');
+            return { success: false, message: '创建组织失败：未能从数据库取回已创建的组织信息。', status: 500 };
+        }
+
+        console.log(`[createOrganization] Organization ${newOrganization.id} created. Adding creator ${creatorId} as org_admin.`);
+        const membershipPayload = {
+            user_id: creatorId,
+            organization_id: newOrganization.id,
+            role_in_org: 'org_admin',
+            status_in_org: 'approved'
+        };
+        console.log('[createOrganization] Payload for user_organization_memberships insert:', JSON.stringify(membershipPayload, null, 2));
+
+        const { error: memberError } = await supabaseAdmin
+            .from('user_organization_memberships')
+            .insert(membershipPayload); // No .select().single() needed if we don't use the result of this insert
+
+        console.log('[createOrganization] Response from user_organization_memberships insert - memberError:', JSON.stringify(memberError, null, 2));
+
+        if (memberError) {
+            console.warn(`[createOrganization] Failed to add creator as admin to new org ${newOrganization.id}: ${memberError.message}. Organization was created, but admin membership failed.`);
+            // Still return success for org creation, but message could reflect partial success if desired.
+            // For now, keeping original behavior: org creation is success, membership is best-effort with warning.
+        }
+
+        const finalReturnObject = { success: true, data: newOrganization, message: "Organization created successfully.", status: 201 };
+        console.log('[createOrganization] Returning final object:', JSON.stringify(finalReturnObject, null, 2));
+        return finalReturnObject;
+
     } catch (error) {
-        console.error('Error creating organization:', error);
-        return { success: false, message: error.message, status: (error.code === '23505' ? 409 : 500) }; // Handle unique name violation
+        console.error('[createOrganization] Caught error in service function:', error);
+        const finalErrorReturn = { success: false, message: error.message, status: (error.code === '23505' ? 409 : 500) };
+        console.log('[createOrganization] Returning error object from catch:', JSON.stringify(finalErrorReturn, null, 2));
+        return finalErrorReturn;
     }
 }
 
@@ -120,7 +147,7 @@ export async function createOrganization(orgData, creatorId) {
  */
 export async function updateOrganization(orgId, updateData) {
     try {
-        const { data: updatedOrganization, error } = await supabase
+        const { data: updatedOrganization, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .update(updateData)
             .eq('id', orgId)
@@ -145,7 +172,7 @@ export async function updateOrganization(orgId, updateData) {
  */
 export async function deleteOrganization(orgId) {
     try {
-        const { error, count } = await supabase
+        const { error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('organizations')
             .delete({ count: 'exact' })
             .eq('id', orgId);
@@ -172,7 +199,7 @@ export async function listOrganizationMembers(orgId, queryParams = {}) {
     const offset = (page - 1) * limit;
 
     try {
-        const { data, error, count } = await supabase
+        const { data, error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .select(`
                 user_id,
@@ -221,7 +248,7 @@ export async function listOrganizationMembers(orgId, queryParams = {}) {
  */
 export async function addOrganizationMember(orgId, userId, role_in_org) {
     try {
-        const { data: newMembership, error } = await supabase
+        const { data: newMembership, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .insert([{
                 organization_id: orgId,
@@ -258,7 +285,7 @@ export async function updateOrganizationMember(orgId, userId, memberData) {
     }
 
     try {
-        const { data: updatedMembership, error } = await supabase
+        const { data: updatedMembership, error } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .update(updatePayload)
             .eq('organization_id', orgId)
@@ -285,7 +312,7 @@ export async function updateOrganizationMember(orgId, userId, memberData) {
  */
 export async function removeOrganizationMember(orgId, userId) {
     try {
-        const { error, count } = await supabase
+        const { error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .delete({ count: 'exact' })
             .eq('organization_id', orgId)
@@ -307,20 +334,25 @@ export async function removeOrganizationMember(orgId, userId) {
  */
 export async function listPublicOrganizations() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin // Changed to supabaseAdmin for consistency, though public might use anon client
             .from('organizations')
             .select('id, name, description') // Select only specific fields for public view
             .eq('is_publicly_listable', true)
             .order('name', { ascending: true });
 
         if (error) {
-            console.error('Error fetching public organizations:', error);
-            // Return the error object itself for more detailed client-side handling if needed
-            return { success: false, message: 'Failed to fetch public organizations.', error: error, status: 500 };
+            console.error('Error fetching public organizations:', error); // Keep this detailed log
+            let detailedMessage = 'Failed to fetch public organizations.';
+            // Check if the error message or code hints at RLS, though this is heuristic
+            if (error.message && (error.message.includes('permission denied') || error.message.includes('policy'))) {
+                detailedMessage += ' This might be due to Row Level Security (RLS) policies. Please check table permissions in Supabase.';
+            }
+            return { success: false, message: detailedMessage, error: error, status: 500 };
         }
         return { success: true, data: data || [], status: 200 };
     } catch (error) { // Catch unexpected errors
         console.error('Unexpected error in listPublicOrganizations:', error);
+        // Ensure the caught error is also passed along if it's different from a Supabase direct error
         return { success: false, message: 'An unexpected error occurred while fetching public organizations.', error: error, status: 500 };
     }
 }
@@ -336,7 +368,7 @@ export async function listPendingMemberships(queryParams = {}) {
     const offset = (page - 1) * limit;
 
     try {
-        const { data, error, count } = await supabase
+        const { data, error, count } = await supabaseAdmin // Changed to supabaseAdmin
             .from('user_organization_memberships')
             .select(`
                 id,
@@ -345,7 +377,7 @@ export async function listPendingMemberships(queryParams = {}) {
                 role_in_org,
                 status_in_org,
                 created_at,
-                user_profiles ( username, email ),
+                user_profiles ( username ),
                 organizations ( name )
             `, { count: 'exact' })
             .eq('status_in_org', 'pending_approval')
@@ -361,7 +393,7 @@ export async function listPendingMemberships(queryParams = {}) {
             membershipId: req.id,
             userId: req.user_id,
             username: req.user_profiles?.username,
-            userEmail: req.user_profiles?.email,
+            // userEmail: req.user_profiles?.email, // Removed email as it's not in user_profiles
             organizationId: req.organization_id,
             organizationName: req.organizations?.name,
             requestedRole: req.role_in_org,

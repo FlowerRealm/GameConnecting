@@ -25,37 +25,49 @@ async function loadAndRenderOrganizations() {
 
     try {
         const result = await apiService.request('/api/organizations'); // Uses the new public endpoint
-        if (result.success && result.data && result.data.length > 0) {
-            container.innerHTML = ''; // Clear "Loading..."
-            result.data.forEach(org => {
-                const div = document.createElement('div');
-                div.classList.add('checkbox-item'); // Optional: for styling
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `org-${org.id}`;
-                checkbox.name = 'organizationIds';
-                checkbox.value = org.id;
+        // Check if the apiService request itself was successful (e.g. HTTP 200) AND
+        // if the backend operation indicated success within its own response structure.
+        if (result.success && result.data && result.data.success && result.data.data) {
+            if (result.data.data.length > 0) {
+                container.innerHTML = ''; // Clear "Loading..."
+                result.data.data.forEach(org => { // Iterate over result.data.data
+                    const div = document.createElement('div');
+                    div.classList.add('checkbox-item');
 
-                const label = document.createElement('label');
-                label.htmlFor = `org-${org.id}`;
-                label.textContent = org.name;
-                if (org.description) {
-                    label.title = org.description;
-                }
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `org-${org.id}`;
+                    checkbox.name = 'organizationIds';
+                    checkbox.value = org.id;
 
-                div.appendChild(checkbox);
-                div.appendChild(label);
-                container.appendChild(div);
-            });
-        } else if (result.success && result.data && result.data.length === 0) {
-            container.innerHTML = '<p>暂无公开组织可供选择加入。</p>';
+                    const label = document.createElement('label');
+                    label.htmlFor = `org-${org.id}`;
+                    label.textContent = org.name;
+                    if (org.description) {
+                        label.title = org.description;
+                    }
+
+                    div.appendChild(checkbox);
+                    div.appendChild(label);
+                    container.appendChild(div);
+                });
+            } else { // result.data.data.length === 0
+                container.innerHTML = '<p>暂无公开组织可供选择加入。</p>';
+            }
         } else {
+            // This 'else' handles cases where:
+            // 1. apiService.request failed (result.success is false, e.g., network error, 500 from server)
+            // 2. apiService.request succeeded (HTTP 200) but backend indicated failure (result.data.success is false)
+            // 3. The structure of result.data or result.data.data is not as expected.
             container.innerHTML = '<p>无法加载组织列表，请稍后再试。</p>';
-            console.error('Failed to load organizations:', result.message);
+            // Log the message from apiService if result.success is false,
+            // or the message from the backend if result.data.success is false.
+            const errorMessage = result.data && result.data.message ? result.data.message : result.message;
+            console.error('Failed to load organizations:', errorMessage || 'Unknown error');
         }
     } catch (error) {
-        console.error('Error loading organizations:', error);
+        console.error('Error loading organizations:', error.message || error); // Log error.message if available
         container.innerHTML = '<p>加载组织列表时发生错误。</p>';
     }
 }
@@ -70,6 +82,7 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const username = document.getElementById('username').value.trim();
+    // const email = document.getElementById('email').value.trim(); // REMOVE Email Value Retrieval
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
     const note = document.getElementById('note')?.value?.trim();
@@ -82,6 +95,19 @@ form.addEventListener('submit', async (e) => {
         error.style.display = 'block';
         return;
     }
+
+    // REMOVE Client-Side Email Validation
+    // if (!email) {
+    //     error.textContent = '请输入邮箱地址';
+    //     error.style.display = 'block';
+    //     return;
+    // }
+    // const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // if (!emailPattern.test(email)) {
+    //     error.textContent = '请输入有效的邮箱地址';
+    //     error.style.display = 'block';
+    //     return;
+    // }
 
     if (username.length < 3 || username.length > 20) {
         error.textContent = '用户名长度应在3-20个字符之间';
@@ -117,11 +143,12 @@ form.addEventListener('submit', async (e) => {
         const selectedOrgCheckboxes = document.querySelectorAll('#organization-select-container input[name="organizationIds"]:checked');
         const requestedOrganizationIds = Array.from(selectedOrgCheckboxes).map(cb => cb.value);
 
+        // REMOVE Email from Payload
         const result = await auth.register({
             username,
             password,
             note,
-            requestedOrganizationIds // Add this new array
+            requestedOrganizationIds
         });
 
         if (result.success) {

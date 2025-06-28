@@ -8,6 +8,8 @@ export class AuthManager {
         this.apiService = apiService;
         this.tokenKey = 'gameconnecting_token';
         this.usernameKey = 'gameconnecting_username';
+        this.refreshTokenKey = 'gameconnecting_refresh_token'; // Added refresh token key
+        this.roleKey = 'gameconnecting_role'; // Added role key
     }
 
     static getInstance() {
@@ -20,22 +22,32 @@ export class AuthManager {
     /**
      * 登录
      */
-    async login(email, password) {
+    async login(username, password) { // Changed 'email' to 'username'
         try {
             const result = await this.apiService.request('/auth/login', {
                 method: 'POST',
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ username, password }) // Changed 'email' to 'username'
             });
 
             // Corrected parsing of backend response structure
-            if (result.success && result.data && result.data.access_token) {
-                this.#saveAuthData(result.data.access_token, result.data.username, result.data.role);
+            // Check for apiService success, then backend success, then actual data presence
+            if (result.success && result.data && result.data.success && result.data.data && result.data.data.access_token) {
+                // Now correctly accessing the nested data object from the backend's response
+                this.#saveAuthData(
+                    result.data.data.access_token,
+                    result.data.data.refresh_token,
+                    result.data.data.username,
+                    result.data.data.role
+                );
             }
             return result;
         } catch (error) {
+            // error here is likely the object thrown by apiService for non-ok responses,
+            // which includes statusCode and message from the server.
             return {
                 success: false,
-                message: '登录过程中发生错误，请稍后重试'
+                message: error.message || '登录过程中发生错误，请稍后重试', // Use specific message if available
+                statusCode: error.statusCode || null // Pass along statusCode if available
             };
         }
     }
@@ -125,8 +137,9 @@ export class AuthManager {
             }
             const expiry = payload.exp * 1000;
             const now = Date.now();
-            if (expiry - Date.now() < 3600000) {
-                this.refreshToken().catch(e => console.error('[Auth] Refresh token error:', e));
+
+            if (expiry - Date.now() < 3600000) { // 1 hour
+                this.refreshToken().catch(() => {}); // Silenced catch
             }
             const isValid = expiry > now;
             return isValid;
@@ -141,16 +154,47 @@ export class AuthManager {
      */
     async refreshToken() {
         try {
+            const storedRefreshToken = localStorage.getItem(this.refreshTokenKey);
+            if (!storedRefreshToken) {
+                this.#removeAuthData(); // Clear all auth data if refresh token is missing
+                return false;
+            }
+
             const result = await this.apiService.request('/auth/refresh', {
-                method: 'POST'
+                method: 'POST',
+                body: JSON.stringify({ refresh_token: storedRefreshToken })
             });
 
-            if (result.success && result.data?.token) {
-                this.#saveAuthData(result.data.token, result.data.username);
+            // Check for apiService success, then backend success, then actual data presence
+            if (result.success && result.data && result.data.success &&
+                result.data.data && result.data.data.access_token && result.data.data.refresh_token) {
+                this.#saveAuthData(
+                    result.data.data.access_token, // Access nested data object
+                    result.data.data.refresh_token, // Access nested data object
+                    result.data.data.username,      // Access nested data object
+                    result.data.data.role           // Access nested data object
+                );
                 return true;
+            } else if (result.success && result.data && result.data.success) {
+                // HTTP success, backend success, but tokens missing in result.data.data
+                return false;
+            } else if (result.success) {
+                // HTTP success, but backend logic failed (result.data.success is false)
+                // or result.data itself is not as expected.
+                // Potentially clear tokens here if backend says refresh failed, e.g. invalid refresh token
+                if (result.data && !result.data.success) {
+                     this.#removeAuthData(); // If backend explicitly says refresh failed
+                }
+                return false;
             }
+            // If result.success is false (HTTP error), apiService would have thrown,
+            // and the catch block below handles it by calling #removeAuthData.
+            // This specific return false should ideally not be reached if apiService always throws.
             return false;
         } catch (error) {
+            // If refresh fails (e.g. 401 from backend if refresh token is invalid/expired),
+            // consider the session ended and clear auth data.
+            this.#removeAuthData();
             return false;
         }
     }
@@ -158,11 +202,17 @@ export class AuthManager {
     /**
      * 保存认证数据
      */
-    #saveAuthData(token, username, role) {
+    #saveAuthData(token, refreshToken, username, role) { // Added refreshToken parameter
         if (token && this.tokenKey) {
             localStorage.setItem(this.tokenKey, token);
         }
+        if (refreshToken && this.refreshTokenKey) { // Store refresh token
+            localStorage.setItem(this.refreshTokenKey, refreshToken);
+        }
         if (username && this.usernameKey) localStorage.setItem(this.usernameKey, username);
+        if (role && this.roleKey) { // Store role
+            localStorage.setItem(this.roleKey, role);
+        }
 
         window.dispatchEvent(new CustomEvent('auth:login', {
             detail: { username }
@@ -175,6 +225,8 @@ export class AuthManager {
     #removeAuthData() {
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.usernameKey);
+        localStorage.removeItem(this.refreshTokenKey); // Remove refresh token on logout
+        localStorage.removeItem(this.roleKey); // Remove role on logout
         store.clearState();
         window.dispatchEvent(new CustomEvent('auth:logout'));
     }
@@ -183,7 +235,8 @@ export class AuthManager {
      * 获取存储的 token
      */
     getToken = () => {
-        return localStorage.getItem(this.tokenKey);
+        const token = localStorage.getItem(this.tokenKey);
+        return token;
     }
 
     /**
@@ -192,6 +245,14 @@ export class AuthManager {
     getUsername() {
         return localStorage.getItem(this.usernameKey);
     }
+
+    /**
+     * 获取存储的角色
+     */
+    getRole() {
+        return localStorage.getItem(this.roleKey);
+    }
+
     /**
      * 获取存储的用户 ID
      */
@@ -217,7 +278,6 @@ export class AuthManager {
      * 检查用户是否是管理员
      */
     isAdmin() {
-        const username = this.getUsername();
-        return username === 'admin';
+        return this.getRole() === 'admin';
     }
 }

@@ -13,16 +13,18 @@ export function initNavbar() {
     const authButtons = document.getElementById('authButtons');
 
     if (auth.isAuthenticated()) {
+        const userRole = auth.getRole(); // Use auth.getRole()
+
         // 根据用户角色显示不同的导航菜单
-        if (auth.isAdmin()) {
+        if (userRole === 'admin') {
             navMenu.innerHTML = `
-                <a href="/servers" class="nav-item">服务器管理</a>
-                <a href="/admin" class="nav-item">用户管理</a>
+                <a href="/administrator/server" class="nav-item">服务器管理</a>
+                <a href="/administrator/user" class="nav-item">用户管理</a>
             `;
-        } else {
+        } else { // Normal user
             navMenu.innerHTML = `
-                <a href="/servers" class="nav-item">服务器</a>
-                <a href="/users" class="nav-item">用户列表</a>
+                <a href="/server" class="nav-item">服务器</a>
+                <a href="/user" class="nav-item">所有用户</a>
             `;
         }
 
@@ -37,6 +39,8 @@ export function initNavbar() {
                 </div>
             </div>
         `;
+        // If "个人资料" is a main nav item, it could be removed from dropdown for less redundancy,
+        // but keeping it is also fine for quick access. For now, it's kept as per original structure.
 
         document.getElementById('logoutButton')?.addEventListener('click', (e) => {
             e.preventDefault();

@@ -16,7 +16,6 @@ if (!auth.isAuthenticated()) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOMContentLoaded 事件触发');
     if (!auth.isAuthenticated()) { // Double check, though top-level check might have redirected
         window.location.href = '/login';
         return;
@@ -63,23 +62,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // initChatSidebar(serverId, currentServerDetails, auth);
 
     const leaveButton = document.getElementById('leaveServerButton');
-    console.log('离开服务器按钮:', leaveButton);
     
     if (leaveButton) {
         leaveButton.addEventListener('click', async () => {
-            console.log('离开服务器按钮被点击');
             const serverId = new URLSearchParams(window.location.search).get('serverId');
-            console.log('当前服务器ID:', serverId);
             
             if (serverId) {
                 try {
-                    console.log('调用离开服务器API...');
                     // 调用后端API离开服务器
                     const response = await apiService.request(`/servers/${serverId}/leave`, {
                         method: 'POST'
                     });
-                    
-                    console.log('API响应:', response);
                     
                     if (response.success) {
                         chatManager.leaveServer();
@@ -93,7 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     store.addNotification('离开服务器时出错', 'error');
                 }
             } else {
-                console.log('没有服务器ID，直接跳转');
                 chatManager.leaveServer();
                 window.location.href = '/servers';
             }
@@ -200,7 +192,6 @@ async function loadServerDetails(serverId) {
 }
 
 function updateVoiceUserListUI(voiceUsers) {
-    console.log('Updating voice user list UI with:', voiceUsers);
     // const memberListContainer = document.getElementById('memberListContainer');
     // Placeholder for actual UI update logic.
     // This would involve iterating through currently displayed members

@@ -1,4 +1,3 @@
-console.log('--- SERVER.JS LATEST VERSION RUNNING --- [Timestamp: ' + new Date().toISOString() + ']');
 /*
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-31 09:54:18
@@ -16,8 +15,8 @@ import roomsRouter from './src/api/rooms.js';
 import adminRouter from './src/api/admin.js'; // General admin routes
 import adminOrganizationsRouter from './src/api/adminOrganizations.js'; // Admin routes for organizations
 import organizationsRouter from './src/api/organizations.js'; // Public routes for organizations
-import friendsRouter from './src/api/friends.js';
 import usersRouter from './src/api/users.js';
+import adminServersRouter from './src/api/adminServers.js'; // Added for admin server management
 import { initSocket } from './src/socket/index.js';
 import { getConfig, getServerConfig } from './src/config/index.js';
 
@@ -32,7 +31,8 @@ const allowedOrigins = [
   'https://game.flowerrealm.top', // Production frontend
   'https://game-connecting-git-backend-refa-bf604e-flowercountrys-projects.vercel.app', // Vercel preview/branch URL for frontend
   'http://localhost:12000',       // Local development for frontend
-  'http://127.0.0.1:12000'      // Local development alias for frontend
+  'http://127.0.0.1:12000',      // Local development alias for frontend
+  'https://game-connecting.vercel.app' // New URL added
 ];
 
 // CORS options
@@ -56,7 +56,7 @@ app.use(cors(corsOptions));
 
 // Optional: Handle preflight requests across all routes,
 // though app.use(cors(corsOptions)) should generally cover this for subsequent routes.
-// app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); // Ensure preflight requests are explicitly handled
 
 const verifyApiKey = (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
@@ -78,8 +78,8 @@ app.use('/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
 app.use('/admin', adminRouter); // Keep for existing general admin tasks if any
 app.use('/api/admin/organizations', adminOrganizationsRouter); // New route for admin org management
+app.use('/api/admin/servers', adminServersRouter); // Added for admin server management
 app.use('/api/organizations', organizationsRouter); // New public route for organizations
-app.use('/friends', friendsRouter);
 app.use('/users', usersRouter);
 
 app.get('/health', (req, res) => {
@@ -96,7 +96,6 @@ initSocket(server);
 const port = serverConfig.port;
 server.listen(port, '0.0.0.0', () => {
     console.log('环境:', getConfig('env'));
-    // console.log('前端URL (from config, for reference):', serverConfig.frontendUrl); // serverConfig.frontendUrl might be stale if not updated
     console.log('Allowed CORS origins:', allowedOrigins);
     console.log(`后端服务器运行在: http://0.0.0.0:${port}`);
 });

@@ -41,11 +41,102 @@ export async function updateUserPassword(userId, newPassword) {
 
         // According to Supabase docs, data should contain the updated user object.
         // If no error, the operation was successful.
-        // console.log('Password updated successfully for user:', data?.user?.id);
         return { success: true, message: 'Password updated successfully.' };
 
     } catch (error) {
         console.error('Unexpected error in updateUserPassword service:', error);
         return { success: false, message: 'An unexpected error occurred while updating the password.', status: 500 };
+    }
+}
+
+/**
+ * Placeholder function to fetch organization memberships for a user.
+ * @param {string} userId - The UUID of the user.
+ * @returns {Promise<Array>} - A promise that resolves to an array of organization memberships.
+ */
+export async function getUserOrganizationMemberships(userId) {
+  if (!userId) {
+    console.error('getUserOrganizationMemberships: userId is required.');
+    // Consistently return an error object or throw, based on service patterns.
+    // For now, throwing, as the API layer will catch it.
+    throw new Error('User ID is required to fetch organization memberships.');
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('user_organization_memberships') // Assuming this is the correct table name
+      .select(`
+        role_in_org,
+        status_in_org,
+        organizations (
+          id,
+          name,
+          description
+        )
+      `)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Supabase error in getUserOrganizationMemberships:', error);
+      throw error; // Re-throw the error to be caught by the calling API route
+    }
+
+    if (!data) {
+      return []; // Should not happen if no error, but good practice
+    }
+
+    // Transform the data to match the desired output structure
+    return data.map(item => {
+      if (!item.organizations) {
+        // This case might happen if a membership record exists but the related organization is missing
+        // or if the join did not populate organizations (e.g. due to RLS on organizations for the admin role if not set up correctly)
+        // For now, log and skip or return partial data.
+        console.warn(`Membership data for user ${userId} is missing related organization details for a record. Membership ID might be relevant if available.`);
+        return null; // Or some other placeholder for malformed data
+      }
+      return {
+        org_id: item.organizations.id,
+        org_name: item.organizations.name,
+        org_description: item.organizations.description,
+        role_in_org: item.role_in_org,
+        status_in_org: item.status_in_org,
+      };
+    }).filter(item => item !== null); // Filter out any nulls from malformed records
+
+  } catch (error) {
+    // Catch any unexpected errors during the process
+    console.error('Unexpected error in getUserOrganizationMemberships:', error);
+    // Re-throw to allow the API layer to handle the HTTP response
+    // Or, return a structured error object if that's the service pattern:
+    // return { success: false, message: 'Failed to fetch organization memberships.', error: error };
+    throw error;
+  }
+}
+
+/**
+ * Fetches a list of active users.
+ * Returns only id and username, ordered by username.
+ * @returns {Promise<{success: boolean, data?: Array, message?: string, status?: number}>}
+ */
+export async function getActiveUsersList() {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('user_profiles')
+            .select('id, username') // Fetch only id and username
+            .eq('status', 'active') // Filter by active status
+            .order('username', { ascending: true }); // Order by username
+
+        if (error) {
+            console.error('Supabase error in getActiveUsersList:', error);
+            // It's better to throw the error or return a structured error response
+            // rather than just the error object, to be handled by the API layer.
+            return { success: false, message: 'Failed to fetch active users: ' + error.message, status: error.status || 500 };
+        }
+
+        return { success: true, data: data || [] }; // Ensure data is an array, even if null
+
+    } catch (error) {
+        console.error('Unexpected error in getActiveUsersList service:', error);
+        return { success: false, message: 'An unexpected error occurred while fetching active users.', status: 500 };
     }
 }

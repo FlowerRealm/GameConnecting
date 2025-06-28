@@ -14,14 +14,14 @@ const error = document.getElementById('error');
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById('email').value.trim();
+    const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
 
     error.style.display = 'none';
     error.textContent = '';
 
-    if (!email) {
-        error.textContent = '请输入邮箱';
+    if (!username) {
+        error.textContent = '请输入用户名';
         error.style.display = 'block';
         return;
     }
@@ -33,12 +33,13 @@ form.addEventListener('submit', async (e) => {
     }
 
     try {
-        const result = await auth.login(email, password);
+        const result = await auth.login(username, password);
         if (result.success) {
             error.className = 'success';
             error.textContent = '登录成功，正在跳转...';
             error.style.display = 'block';
 
+            // All users redirect to '/' after successful login
             setTimeout(() => {
                 window.location.href = '/';
             }, 1000);

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器管理 - GameConnecting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-content-wrapper">
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+            </div>
+            <div class="navbar-auth" id="authButtons">
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-container glassmorphic-container">
+        <h1>服务器管理</h1>
+
+        <div class="admin-actions">
+            <button id="createServerBtn" class="button primary-button">创建新服务器</button>
+        </div>
+
+        <div id="serverListContainer" class="table-container">
+            <p>正在加载服务器列表...</p>
+            <!-- Server list will be rendered here -->
+        </div>
+        <div id="serverListPagination" class="pagination">
+            <!-- Pagination controls will be rendered here by JavaScript -->
+        </div>
+
+        <!-- Modal for Create/Edit Server -->
+        <div id="serverModal" class="modal">
+            <div class="modal-content glassmorphic-container">
+                <h2 id="serverModalTitle">创建/编辑服务器</h2>
+                <form id="serverForm">
+                    <input type="hidden" id="serverId" name="serverId">
+                    <div class="form-group">
+                        <label for="serverName">服务器名称:</label>
+                        <input type="text" id="serverName" name="name" required minlength="3" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="serverDescription">描述:</label>
+                        <textarea id="serverDescription" name="description" maxlength="1000"></textarea>
+                    </div>
+                    <div class="modal-buttons">
+                        <button type="button" class="modal-close" id="closeServerModalBtn">取消</button>
+                        <button type="submit" class="button primary-button">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Managing Members -->
+        <div id="membersModal" class="modal">
+            <div class="modal-content glassmorphic-container">
+                <h2 id="membersModalTitle">管理成员 - <span id="membersModalServerName"></span></h2>
+                <div id="memberListContainer" class="table-container">
+                    <p>正在加载成员列表...</p>
+                    <!-- Member list will be rendered here -->
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-close" id="closeMembersModalBtn">关闭</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/js/adminServerManagement.js" type="module"></script>
+</body>
+
+</html>

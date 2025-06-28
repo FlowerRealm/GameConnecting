@@ -17,6 +17,8 @@ let currentTab = 'pending'; // Default to user pending tab
 let currentPage = 1;
 const limit = 10; // Default page size
 let selectedUserId = null; // For user review modal
+let currentOrgId = null; // For organization member management
+let currentOrgName = null; // For organization member management
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
@@ -59,6 +61,13 @@ async function loadData() {
             response = await apiService.request('/api/admin/organizations/pending-memberships', {
                 params: { page: currentPage, limit: limit }
             });
+        } else if (currentTab === 'orgs') {
+            // For now, just clear the table and pagination for the new tab
+            // We will implement loadOrganizations and renderOrganizations later
+            document.getElementById('userTable').innerHTML = '';
+            document.getElementById('pagination').innerHTML = '';
+            loadOrganizations(); // Call the new function to load organizations
+            return; // Return early as loadOrganizations will handle rendering
         } else {
             console.error('Unknown tab:', currentTab);
             showError('未知标签页');
@@ -68,15 +77,19 @@ async function loadData() {
         // Standardize response checking: expect { success: true, data: { actualData, paginationInfo } }
         // Or for non-paginated like pending-users: { success: true, data: [items] }
         if (response.success && response.data) {
-            if (currentTab === 'pending' || currentTab === 'all') {
-                // The old endpoints had data nested under response.data.data
-                // Adjust if your actual pending-users endpoint returns data directly
-                renderUsers(response.data.data || response.data); // Try response.data.data first, then response.data
-            } else if (currentTab === 'org-pending') {
-                renderPendingOrgMemberships(response.data); // Service returns data directly under response.data
+            if (response) { // Ensure response is not undefined (e.g. for 'orgs' tab if we return early)
+                if (currentTab === 'pending' || currentTab === 'all') {
+                    // The old endpoints had data nested under response.data.data
+                    // Adjust if your actual pending-users endpoint returns data directly
+                    renderUsers(response.data.data || response.data); // Try response.data.data first, then response.data
+                } else if (currentTab === 'org-pending') {
+                    renderPendingOrgMemberships(response.data); // Service returns data directly under response.data
+                }
             }
-        } else {
+        } else if (response) { // Check response exists before trying to access response.message
             showError(response.message || `获取${currentTab}列表失败`);
+        } else if (currentTab !== 'orgs') { // Don't show error for 'orgs' tab if response is undefined due to early return
+            showError(`获取${currentTab}列表失败`);
         }
     } catch (error) {
         console.error(`Error loading data for tab ${currentTab}:`, error);
@@ -163,7 +176,7 @@ function renderUsers(data) {
             const status = getStatusBadge(user.status);
             const date = new Date(user.createdAt || user.created_at).toLocaleString('zh-CN'); // Handle both casings
             const reviewInfo = user.approvedAt || user.approved_at
-                ? `${new Date(user.approvedAt || user.approved_at).toLocaleString('zh-CN')}<br><small>(${user.approvedByUser?.username || '未知'})</small>`
+                ? `${new Date(user.approvedAt || user.approved_at).toLocaleString('zh-CN')}<br><small>(${user.approvedByUsername || '未知'})</small>`
                 : '-';
 
             html += `
@@ -368,6 +381,303 @@ async function handleOrgMembershipReview(event) {
 }
 // --- End of Organization Membership Review Functions ---
 
+// --- Manage Organizations Functions ---
+async function loadOrganizations() {
+    try {
+        const response = await apiService.request('/api/admin/organizations');
+        // console.log('Full response from /api/admin/organizations:', JSON.stringify(response, null, 2)); // Keep for debugging if necessary
+
+        // Corrected access path based on the log: response.data.data.organizations
+        if (response.success &&
+            response.data &&
+            response.data.data && // Check for the nested 'data' object from backend
+            Array.isArray(response.data.data.organizations)) { // Check if 'organizations' array exists and is an array
+
+            renderOrganizations(response.data.data.organizations);
+            // Pagination data would be in response.data.data.total, response.data.data.page etc.
+            // Currently, loadOrganizations clears pagination. If pagination is needed for orgs,
+            // this is where it would be set up, similar to renderUsers.
+
+        } else {
+            // Error handling:
+            let clientErrorMessage = '获取组织列表失败';
+
+            if (!response.success && response.message) {
+                // Error reported by apiService (e.g., network error, HTTP error status from apiService itself)
+                clientErrorMessage = response.message;
+            } else if (response.data && response.data.success === false && response.data.message) {
+                // Backend reported success:false with a message (nested within apiService's response.data)
+                clientErrorMessage = response.data.message;
+            } else if (response.data && response.data.data && !Array.isArray(response.data.data.organizations)) {
+                // Data structure is not as expected (organizations is not an array)
+                clientErrorMessage = '获取组织列表失败：组织数据格式不正确。';
+                console.error('Expected response.data.data.organizations to be an array, received:', response.data.data.organizations);
+            } else if (response.data && !response.data.data) {
+                // The nested 'data' object (that should contain organizations array) is missing
+                clientErrorMessage = '获取组织列表失败：响应中缺少预期的组织数据结构。';
+            } else if (response.success && response.data && !response.data.data.organizations) {
+                 // The organizations array itself is missing from the nested data object
+                clientErrorMessage = '获取组织列表失败：响应数据中缺少组织列表。';
+            }
+            else {
+                // Fallback for other unexpected scenarios
+                clientErrorMessage = '获取组织列表失败：未知错误或响应不完整。';
+            }
+
+            showError(clientErrorMessage, 'error');
+            document.getElementById('userTable').innerHTML = `<p class="error-message">${clientErrorMessage}</p>`;
+        }
+    } catch (error) {
+        console.error('Error loading organizations:', error);
+        showError(`加载组织列表失败: ${error.message}`);
+        document.getElementById('userTable').innerHTML = '<p class="error-message">加载组织列表时发生错误。</p>';
+    }
+    // Clear pagination for organization list as it's not paginated in this design
+    document.getElementById('pagination').innerHTML = '';
+}
+
+function renderOrganizations(organizations) {
+    const tableContainer = document.getElementById('userTable');
+    // Add a button for creating a new organization
+    let html = `
+        <div class="admin-actions" style="margin-bottom: 1rem;">
+            <button id="createNewOrgBtn" class="button primary-button">
+                <i class="fas fa-plus-circle"></i> 创建新组织
+            </button>
+        </div>
+        <div class="organizations-list-container">
+            <h2>组织列表</h2>
+            <ul class="organizations-list">
+    `;
+
+    if (organizations.length === 0) {
+        html += `<li class="no-data"><i class="fas fa-sitemap"></i> 没有找到任何组织。</li>`;
+    } else {
+        organizations.forEach(org => {
+            html += `
+                <li class="organization-item" data-org-id="${org.id}" data-org-name="${org.name}">
+                    <span class="org-name">${org.name}</span>
+                    <span class="org-id">(ID: ${org.id})</span>
+                </li>
+            `;
+        });
+    }
+    html += `
+            </ul>
+        </div>
+        <div class="organization-members-container">
+            <h3 id="orgMembersHeader" style="display:none;">组织成员</h3>
+            <div id="organizationMembersList">
+                <!-- Members will be loaded here -->
+            </div>
+        </div>
+    `;
+    tableContainer.innerHTML = html;
+
+    document.querySelectorAll('.organization-item').forEach(item => {
+        item.addEventListener('click', () => {
+            // Highlight clicked organization
+            document.querySelectorAll('.organization-item').forEach(el => el.classList.remove('active'));
+            item.classList.add('active');
+            handleOrganizationClick(item.dataset.orgId, item.dataset.orgName);
+        });
+    });
+
+    // After rendering the list, attach event listener to the new "Create New Organization" button
+    const createNewOrgBtn = document.getElementById('createNewOrgBtn');
+    if (createNewOrgBtn) {
+        createNewOrgBtn.addEventListener('click', openCreateOrgModal);
+    }
+}
+
+// Placeholder for modal DOM elements (to be added to user.html or created dynamically)
+// Modal DOM elements for Create Organization (ensure these IDs match the HTML added in user.html)
+const createOrgModal = document.getElementById('createOrgModal');
+const createOrgForm = document.getElementById('createOrgForm');
+const closeCreateOrgModalBtn = document.getElementById('closeCreateOrgModalBtn');
+const orgNameInput = document.getElementById('orgName'); // Assuming ID in modal form
+const orgDescriptionInput = document.getElementById('orgDescription'); // Assuming ID in modal form
+const orgIsPublicCheckbox = document.getElementById('orgIsPublic'); // Assuming ID in modal form
+
+
+// Function to open the create organization modal
+function openCreateOrgModal() {
+    if (createOrgModal) {
+        // document.getElementById('createOrgModalTitle').textContent = '创建新组织'; // If title needs to be dynamic
+        if (createOrgForm) createOrgForm.reset(); // Reset form fields
+        // Ensure checkbox is set to its default (e.g., checked) if reset doesn't handle it
+        if (orgIsPublicCheckbox) orgIsPublicCheckbox.checked = true;
+        createOrgModal.style.display = 'block';
+    } else {
+        console.error('Create Organization Modal not found in DOM.');
+        alert('创建组织功能暂不可用，缺少模态框。');
+    }
+}
+
+// Function to close the create organization modal
+function closeCreateOrgModal() {
+    if (createOrgModal) {
+        createOrgModal.style.display = 'none';
+    }
+}
+
+// Attach event listeners for modal close
+if (closeCreateOrgModalBtn) {
+    closeCreateOrgModalBtn.addEventListener('click', closeCreateOrgModal);
+}
+// Close modal if user clicks outside of it (this listener should be added once, e.g. in DOMContentLoaded)
+// For simplicity, adding it here, but ensure it's managed correctly if there are multiple modals.
+// A more robust way would be a single window click listener that checks all active modals.
+window.addEventListener('click', (event) => {
+    if (event.target == createOrgModal) { // Check if the click is on the modal background itself
+        closeCreateOrgModal();
+    }
+});
+
+// Handle Create Organization Form Submission
+if (createOrgForm) {
+    createOrgForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const name = orgNameInput.value.trim();
+        const description = orgDescriptionInput.value.trim();
+        const is_publicly_listable = orgIsPublicCheckbox.checked;
+
+        if (!name || name.length < 3) {
+            showError('组织名称至少需要3个字符。', 'error');
+            return;
+        }
+
+        const payload = { name, description, is_publicly_listable };
+
+        try {
+            const response = await apiService.request('/api/admin/organizations', 'POST', payload);
+            if (response.success) {
+                showError('组织创建成功！', 'success');
+                closeCreateOrgModal();
+                loadOrganizations(); // Refresh the list of organizations
+            } else {
+                showError(response.message || '创建组织失败。', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating organization:', error);
+            showError('创建组织时发生错误。', 'error');
+        }
+    });
+}
+
+
+async function handleOrganizationClick(orgId, orgName) {
+    const membersListDiv = document.getElementById('organizationMembersList');
+    const membersHeader = document.getElementById('orgMembersHeader');
+
+    // Store current org details for later use (e.g., role change)
+    currentOrgId = orgId;
+    currentOrgName = orgName;
+
+    membersListDiv.innerHTML = '<p>正在加载成员...</p>'; // Show loading indicator
+    membersHeader.textContent = `"${orgName}" 的成员`;
+    membersHeader.style.display = 'block';
+
+    try {
+        const response = await apiService.request(`/api/admin/organizations/${currentOrgId}/members`);
+        if (response.success && response.data) {
+            renderOrganizationMembers(response.data, membersListDiv, currentOrgId, currentOrgName); // Pass orgId and orgName
+        } else {
+            showError(response.message || `获取组织 ${currentOrgName} 成员失败`);
+            membersListDiv.innerHTML = `<p class="error-message">无法加载组织 ${currentOrgName} 的成员。</p>`;
+        }
+    } catch (error) {
+        console.error(`Error loading members for organization ${orgId}:`, error);
+        showError(`加载组织 ${currentOrgName} 成员失败: ${error.message}`);
+        membersListDiv.innerHTML = `<p class="error-message">加载组织 ${currentOrgName} 成员时发生错误。</p>`;
+    }
+}
+
+function renderOrganizationMembers(members, containerDiv, orgId, orgName) { // Added orgId, orgName
+    let html = '';
+    if (members.length === 0) {
+        html = '<p class="no-data"><i class="fas fa-users"></i> 该组织没有成员。</p>';
+    } else {
+        html = `
+            <table class="members-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user"></i> 用户名</th>
+                        <th><i class="fas fa-id-card"></i> 用户ID</th>
+                        <th><i class="fas fa-user-tag"></i> 组织角色</th>
+                        <th><i class="fas fa-info-circle"></i> 组织状态</th>
+                        <th><i class="fas fa-edit"></i> 修改角色</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        members.forEach(member => {
+            const currentRole = member.role_in_org;
+            const userId = member.user?.id;
+
+            html += `
+                <tr data-user-id="${userId}">
+                    <td>${member.user?.username || 'N/A'}</td>
+                    <td>${userId || 'N/A'}</td>
+                    <td>${currentRole || 'N/A'}</td>
+                    <td>${member.status_in_org || 'N/A'}</td>
+                    <td>
+                        ${userId ? `
+                        <select class="role-select" data-user-id="${userId}">
+                            <option value="member" ${currentRole === 'member' ? 'selected' : ''}>Member</option>
+                            <option value="org_admin" ${currentRole === 'org_admin' ? 'selected' : ''}>Org Admin</option>
+                        </select>
+                        ` : 'N/A'}
+                    </td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+    }
+    containerDiv.innerHTML = html;
+
+    // Add event listeners to the new dropdowns
+    containerDiv.querySelectorAll('.role-select').forEach(selectElement => {
+        selectElement.addEventListener('change', async (event) => {
+            const newSelectedRole = event.target.value;
+            const userIdToUpdate = event.target.dataset.userId;
+            // orgId and orgName are available from the outer scope (currentOrgId, currentOrgName)
+
+            if (!currentOrgId || !userIdToUpdate) {
+                showError('无法更新角色：缺少组织或用户信息。');
+                return;
+            }
+
+            try {
+                const response = await apiService.request(
+                    `/api/admin/organizations/${currentOrgId}/members/${userIdToUpdate}`,
+                    {
+                        method: 'PUT',
+                        body: JSON.stringify({ role_in_org: newSelectedRole })
+                    }
+                );
+
+                if (response.success) {
+                    showError('角色更新成功！', 'success');
+                    // Refresh the member list to show the updated role
+                    // Pass currentOrgId and currentOrgName which are stored at a higher scope
+                    handleOrganizationClick(currentOrgId, currentOrgName);
+                } else {
+                    showError(response.message || '角色更新失败。');
+                    // Revert dropdown if needed, or refresh to show original state
+                    handleOrganizationClick(currentOrgId, currentOrgName);
+                }
+            } catch (error) {
+                console.error('Error updating role:', error);
+                showError(`角色更新时发生错误: ${error.message}`);
+                // Revert dropdown or refresh
+                handleOrganizationClick(currentOrgId, currentOrgName);
+            }
+        });
+    });
+}
+// --- End Manage Organizations Functions ---
 
 // --- Utility and Pagination Functions (existing, ensure they are global or accessible) ---
 function renderPagination(total, currentPage, totalPages) {
