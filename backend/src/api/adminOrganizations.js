@@ -59,20 +59,35 @@ router.get('/:orgId', async (req, res) => {
 
 // POST / - Create a new organization
 router.post('/', async (req, res) => {
+    console.log('[API POST /api/admin/organizations] Route handler entered.');
+    console.log('[API POST /api/admin/organizations] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('[API POST /api/admin/organizations] Request user (from token):', JSON.stringify(req.user, null, 2));
+
     try {
         if (!req.body.name) {
+            console.log('[API POST /api/admin/organizations] Validation failed: Organization name is required.');
             return res.status(400).json({ success: false, message: 'Organization name is required.' });
         }
-        const creatorId = req.user.id; // Get creator_id from authenticated user
+
+        const creatorId = req.user?.id; // Get creator_id from authenticated user, optional chaining for safety
+        if (!creatorId) {
+            console.error('[API POST /api/admin/organizations] Critical error: creatorId is undefined or null. req.user:', JSON.stringify(req.user, null, 2));
+            return res.status(500).json({ success: false, message: 'Server error: User ID not found for creator due to authentication issue.' });
+        }
+        console.log(`[API POST /api/admin/organizations] Creator ID: ${creatorId}. Calling adminOrgService.createOrganization...`);
+
         const result = await adminOrgService.createOrganization(req.body, creatorId);
+
+        console.log('[API POST /api/admin/organizations] Service call result:', JSON.stringify(result, null, 2));
+
         if (result.success) {
-            res.status(201).json({ success: true, data: result.data, message: result.message });
+            res.status(result.status || 201).json({ success: true, data: result.data, message: result.message });
         } else {
             res.status(result.status || 500).json({ success: false, message: result.message });
         }
     } catch (error) {
-        console.error('Admin create organization error:', error);
-        res.status(500).json({ success: false, message: 'Failed to create organization.' });
+        console.error('[API POST /api/admin/organizations] Caught error in route handler:', error);
+        res.status(500).json({ success: false, message: 'Failed to create organization due to an unexpected server error.' });
     }
 });
 
