@@ -1,7 +1,7 @@
 // backend/migrate-pg-config.js
-require('dotenv').config({ path: '.env.development' }); // Or your relevant .env file
+import 'dotenv'.config({ path: '.env.development' });
 
-module.exports = {
+const config = {
   databaseUrl: process.env.DATABASE_URL || process.env.LOCAL_DB_URL, // e.g., postgresql://gameconnecting:YOUR_PASSWORD@localhost:5432/gameconnecting
   // OR individual parameters (node-pg-migrate prefers databaseUrl if present)
   // host: process.env.LOCAL_DB_HOST || 'localhost',
@@ -22,3 +22,5 @@ module.exports = {
   count: Infinity,                 // How many migrations to run by default (all)
   checkOrder: true,                // Check order of migrations
 };
+
+export default config;

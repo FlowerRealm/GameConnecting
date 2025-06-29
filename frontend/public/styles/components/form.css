@@ -70,3 +70,31 @@ input:valid {
 .success.hidden {
     display: none;
 }
+
+/* 认证页面链接样式 */
+.links {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.links a {
+    color: var(--primary-color);
+    text-decoration: none;
+    margin: 0 0.5rem;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.links a:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+/* 帮助文本样式 */
+.help-text {
+    color: var(--text-light);
+    font-size: 0.85rem;
+    margin: 0.5rem 0;
+    text-align: center;
+    font-style: italic;
+}

@@ -5,13 +5,17 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const env = process.env.NODE_ENV || 'development';
 const envPath = path.resolve(__dirname, `../.env.${env}`);
 dotenv.config({ path: envPath });
 
 // 检查必要的环境变量
-const requiredEnvVars = ['BACKEND_URL', 'SOCKET_URL', 'FRONTEND_URL'];
+const requiredEnvVars = [
+    'FRONTEND_URL',
+    'BACKEND_URL',
+    'SOCKET_URL'
+];
+
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
@@ -19,30 +23,23 @@ if (missingEnvVars.length > 0) {
     process.exit(1);
 }
 
-// 从环境变量获取配置
 const config = {
-    isDevelopment: env === 'development',
+    frontendUrl: process.env.FRONTEND_URL,
     backendUrl: process.env.BACKEND_URL,
     socketUrl: process.env.SOCKET_URL,
-    frontendUrl: process.env.FRONTEND_URL,
-    apiKey: process.env.API_KEY || '',
-    socket: {
-        maxRetryAttempts: parseInt(process.env.SOCKET_RECONNECTION_ATTEMPTS || '3', 10),
-        reconnectionDelay: parseInt(process.env.SOCKET_RECONNECTION_DELAY || '1000', 10),
-        connectionTimeout: parseInt(process.env.SOCKET_TIMEOUT || '5000', 10),
-        heartbeatInterval: 30000
-    }
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env
 };
 
 console.log('Environment:', env);
-console.log('Config generated:', config);
+console.log('Config generated:', JSON.stringify(config, null, 2));
 
-const configContent = `
-export const config = ${JSON.stringify(config, null, 2)};
+const configContent = `export const config = ${JSON.stringify(config, null, 2)};
 `;
 
 const outputPath = path.resolve(__dirname, '../public/js/config.js');
 
 fs.writeFileSync(outputPath, configContent);
 
-console.log('Generated config.js');
+console.log('Generated config.js at:', outputPath);

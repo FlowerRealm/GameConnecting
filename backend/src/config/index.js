@@ -18,9 +18,6 @@ export function getServerConfig() {
     return config.server;
 }
 
-// getDatabaseConfig removed as config.database is obsolete
-// getAuthConfig removed as config.auth (JWT secret, etc.) is obsolete
-
 export function getSocketConfig() {
     return config.socket;
 }

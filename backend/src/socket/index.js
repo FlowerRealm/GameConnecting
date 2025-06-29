@@ -31,7 +31,6 @@ export const initSocket = (httpServer) => {
             const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
             if (authError || !authUser) {
-                console.error('Socket Auth Error (getUser):', authError?.message || 'No auth user');
                 return next(new Error('Authentication failed: Invalid token'));
             }
 
@@ -42,12 +41,10 @@ export const initSocket = (httpServer) => {
                 .single();
 
             if (profileError || !profile) {
-                console.error('Socket Auth Error (getProfile):', profileError?.message || 'No profile');
                 return next(new Error('Authentication failed: User profile not found'));
             }
 
             if (profile.status !== 'active') {
-                console.warn(`Socket Auth: User ${profile.username} status is ${profile.status}, denying connection.`);
                 return next(new Error('Authentication failed: Account not active'));
             }
 
@@ -58,13 +55,11 @@ export const initSocket = (httpServer) => {
             };
             next();
         } catch (error) {
-            console.error('Socket Authentication Middleware Unexpected Error:', error.message);
             next(new Error('Authentication failed: Server error'));
         }
     });
 
     io.on('connection', (socket) => {
-        console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) connected with socket ID ${socket.id}.`);
         if (!onlineUsers.has(socket.user.id)) {
             onlineUsers.set(socket.user.id, new Set());
         }
@@ -72,7 +67,6 @@ export const initSocket = (httpServer) => {
 
         if (socket.user.role === 'admin') {
             socket.join('admin_room');
-            console.log(`Socket: Admin ${socket.user.username} joined admin_room.`);
         }
 
         socket.on('joinServer', async (serverId) => {
@@ -104,7 +98,6 @@ export const initSocket = (httpServer) => {
                 server.lastActivity = new Date();
                 socket.join(`server:${serverIdStr}`);
 
-                console.log(`Socket: User ${socket.user.username} joined server room server:${serverIdStr}`);
                 io.to(`server:${serverIdStr}`).emit('memberJoined', {
                     userId: socket.user.id,
                     username: socket.user.username,
@@ -112,7 +105,6 @@ export const initSocket = (httpServer) => {
                     onlineCount: server.members.size
                 });
             } catch (error) {
-                console.error(`User ${socket.user.username} joining server ${serverId} failed:`, error.message);
                 socket.emit('joinServerError', { serverId, message: error.message });
             }
         });
@@ -140,7 +132,6 @@ export const initSocket = (httpServer) => {
                 
                 io.to(`server:${serverIdStr}`).emit('message', messageData);
             } catch (error) {
-                console.error(`User ${socket.user.username} sending message to server ${data.serverId} failed:`, error.message);
                 socket.emit('serverMessageError', { serverId: data.serverId, message: error.message });
             }
         });
@@ -154,11 +145,9 @@ export const initSocket = (httpServer) => {
                 if (server && server.members.has(userIdStr)) {
                     server.members.delete(userIdStr);
                     socket.leave(`server:${serverIdStr}`);
-                    console.log(`Socket: User ${socket.user.username} left server room server:${serverIdStr}`);
                     
                     if (server.members.size === 0) {
                         activeServers.delete(serverIdStr);
-                        console.log(`Socket: Server ${serverIdStr} is now empty of active users.`);
                         await deleteEmptyServerIfNoMembersInDb(serverId); // Check DB members too
                     } else {
                         io.to(`server:${serverIdStr}`).emit('memberLeft', {
@@ -170,31 +159,26 @@ export const initSocket = (httpServer) => {
                     }
                 }
             } catch (error) {
-                console.error(`User ${socket.user.username} leaving server ${serverId} failed:`, error.message);
                 socket.emit('leaveServerError', { serverId, message: error.message });
             }
         });
 
         socket.on('disconnect', async () => {
-            console.log(`Socket: User ${socket.user.username} (ID: ${socket.user.id}) disconnected socket ID ${socket.id}.`);
             const userSockets = onlineUsers.get(socket.user.id);
             if (userSockets) {
                 userSockets.delete(socket.id);
                 if (userSockets.size === 0) {
                     onlineUsers.delete(socket.user.id);
-                    console.log(`Socket: User ${socket.user.username} is now fully offline.`);
                 }
             }
 
             const userIdStr = String(socket.user.id);
-            activeServers.forEach((server, serverIdStr) => { // serverId is already string key
+            activeServers.forEach((server, serverIdStr) => {
                 if (server.members.has(userIdStr)) {
                     server.members.delete(userIdStr);
-                    console.log(`Socket: User ${socket.user.username} removed from active list of server ${serverIdStr}`);
                     if (server.members.size === 0) {
                         activeServers.delete(serverIdStr);
-                        console.log(`Socket: Server ${serverIdStr} is now empty of active users due to disconnect.`);
-                        deleteEmptyServerIfNoMembersInDb(Number(serverIdStr)); // Convert back to number if DB expects it
+                        deleteEmptyServerIfNoMembersInDb(Number(serverIdStr));
                     } else {
                         io.to(`server:${serverIdStr}`).emit('memberLeft', {
                             userId: socket.user.id,
@@ -206,16 +190,13 @@ export const initSocket = (httpServer) => {
                 }
             });
 
-            // Voice session cleanup on disconnect
             const disconnectedSocketId = socket.id;
-            if (socket.user && socket.user.id && socket.user.username) { // Check if socket.user and its properties exist
+            if (socket.user && socket.user.id && socket.user.username) {
                 const { id: disconnectedUserId, username: disconnectedUsername } = socket.user;
                 voiceSessions.forEach((roomVoiceSession, roomId) => {
                     if (roomVoiceSession.has(disconnectedSocketId)) {
                         roomVoiceSession.delete(disconnectedSocketId);
-                        console.log(`Socket: User ${disconnectedUsername} (socket: ${disconnectedSocketId}) removed from voice in room ${roomId} due to disconnect. Remaining: ${roomVoiceSession.size}`);
 
-                        // Notify remaining users in that voice room
                         roomVoiceSession.forEach(peer => {
                             io.to(peer.socketId).emit('voice:user_left', {
                                 socketId: disconnectedSocketId,
@@ -226,18 +207,14 @@ export const initSocket = (httpServer) => {
 
                         if (roomVoiceSession.size === 0) {
                             voiceSessions.delete(roomId);
-                            console.log(`Socket: Voice session for room ${roomId} is now empty due to disconnect.`);
                         }
                     }
                 });
             } else {
-                // Fallback for cases where socket.user might not be fully populated
                 voiceSessions.forEach((roomVoiceSession, roomId) => {
                     if (roomVoiceSession.has(disconnectedSocketId)) {
-                        const deletedPeer = roomVoiceSession.get(disconnectedSocketId); // Get peer info before deleting
+                        const deletedPeer = roomVoiceSession.get(disconnectedSocketId);
                         roomVoiceSession.delete(disconnectedSocketId);
-                        console.log(`Socket: User (socket: ${disconnectedSocketId}, details unknown/partial) removed from voice in room ${roomId} due to disconnect. Remaining: ${roomVoiceSession.size}`);
-                        // Notify remaining users, even if username is unknown
                         roomVoiceSession.forEach(peer => {
                             io.to(peer.socketId).emit('voice:user_left', {
                                 socketId: disconnectedSocketId,
@@ -247,12 +224,11 @@ export const initSocket = (httpServer) => {
                         });
                         if (roomVoiceSession.size === 0) {
                             voiceSessions.delete(roomId);
-                            console.log(`Socket: Voice session for room ${roomId} is now empty due to disconnect of user with unknown details.`);
                         }
                     }
                 });
-            } // End of voice session cleanup
-        }); // End of socket.on('disconnect')
+            }
+        });
 
         // --- Voice Chat Event Handlers ---
 
@@ -290,13 +266,11 @@ export const initSocket = (httpServer) => {
             // Add new peer to the session
             // Storing socketId explicitly as part of the peer object for clarity
             roomVoiceSession.set(socketId, { socketId, userId, username });
-            console.log(`Socket: User ${username} (socket: ${socketId}) joined voice in room ${currentRoomId}. Total in voice: ${roomVoiceSession.size}`);
         });
 
         socket.on('voice:leave_room', (data) => {
             const { roomId } = data;
             if (!socket.user || !socket.user.id || !socket.user.username) {
-                // Should not happen if user was in a voice room, but good check
                 return;
             }
             const { id: userId, username } = socket.user;
@@ -307,16 +281,13 @@ export const initSocket = (httpServer) => {
                 const roomVoiceSession = voiceSessions.get(currentRoomId);
                 if (roomVoiceSession.has(socketId)) {
                     roomVoiceSession.delete(socketId);
-                    console.log(`Socket: User ${username} (socket: ${socketId}) left voice in room ${currentRoomId}. Remaining in voice: ${roomVoiceSession.size}`);
 
-                    // Notify remaining users
                     roomVoiceSession.forEach(peer => {
                         io.to(peer.socketId).emit('voice:user_left', { socketId, userId, username });
                     });
 
                     if (roomVoiceSession.size === 0) {
                         voiceSessions.delete(currentRoomId);
-                        console.log(`Socket: Voice session for room ${currentRoomId} is now empty.`);
                     }
                 }
             }
@@ -334,8 +305,6 @@ export const initSocket = (httpServer) => {
                     sdp
                 });
             } else {
-                console.warn(`Socket: User ${socket.id} tried to send signal to ${targetSocketId} not in same voice room ${currentRoomId}`);
-                // socket.emit('voice:error', { message: `User ${targetSocketId} not found in voice room ${currentRoomId}.` });
             }
         });
 
@@ -350,7 +319,6 @@ export const initSocket = (httpServer) => {
                     candidate
                 });
             } else {
-                console.warn(`Socket: User ${socket.id} tried to send ICE candidate to ${targetSocketId} not in same voice room ${currentRoomId}`);
             }
         });
 
@@ -361,7 +329,6 @@ export const initSocket = (httpServer) => {
 
 async function deleteEmptyServerIfNoMembersInDb(serverId) {
     try {
-        console.log(`Socket: Checking server ${serverId} for potential deletion (no active users).`);
         
         const { count, error: countError } = await supabase
             .from('server_members')
@@ -369,20 +336,16 @@ async function deleteEmptyServerIfNoMembersInDb(serverId) {
             .eq('server_id', serverId);
 
         if (countError) {
-            console.error(`Socket: Error counting members for server ${serverId}:`, countError.message);
             return;
         }
         
         if (count === 0) {
-            console.log(`Socket: Server ${serverId} has no members in DB. Proceeding with deletion.`);
             const { error: deleteRequestsError } = await supabase
                 .from('server_join_requests')
                 .delete()
                 .eq('server_id', serverId);
 
             if (deleteRequestsError) {
-                console.error(`Socket: Error deleting join requests for server ${serverId}:`, deleteRequestsError.message);
-                // Continue to attempt server deletion
             }
             
             const { error: deleteServerError } = await supabase
@@ -391,15 +354,11 @@ async function deleteEmptyServerIfNoMembersInDb(serverId) {
                 .eq('id', serverId);
 
             if (deleteServerError) {
-                console.error(`Socket: Error deleting server ${serverId}:`, deleteServerError.message);
             } else {
-                console.log(`Socket: Server ${serverId} and its join requests deleted successfully from DB.`);
             }
         } else {
-            console.log(`Socket: Server ${serverId} still has ${count} members in DB, not deleting.`);
         }
-    } catch (error) { // Catch-all for unexpected errors in this function
-        console.error(`Socket: Unexpected error in deleteEmptyServerIfNoMembersInDb for server ${serverId}:`, error.message);
+    } catch (error) {
     }
 }
 

@@ -1,4 +1,5 @@
-.button, /* Added .button to the base button styles */
+.button,
+/* Added .button to the base button styles */
 .btn,
 .auth-button,
 .action-button,
@@ -35,7 +36,8 @@
 }
 
 .btn-primary,
-.primary-button, /* Added .primary-button to share styles with .btn-primary */
+.primary-button,
+/* Added .primary-button to share styles with .btn-primary */
 .add-server-button,
 .review-button,
 .connect-button {
@@ -46,7 +48,8 @@
 }
 
 .btn-primary:hover,
-.primary-button:hover, /* Added .primary-button hover styles */
+.primary-button:hover,
+/* Added .primary-button hover styles */
 .add-server-button:hover,
 .review-button:hover,
 .connect-button:hover {
@@ -79,6 +82,30 @@
 .btn-danger:hover,
 .delete-button:hover {
     background: var(--danger-hover);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-success {
+    background: var(--success-color, #28a745);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-success:hover {
+    background: var(--success-hover, #218838);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-warning {
+    background: var(--warning-color, #ffc107);
+    color: #212529;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-warning:hover {
+    background: var(--warning-hover, #e0a800);
     border-color: rgba(255, 255, 255, 0.3);
 }
 

@@ -11,13 +11,16 @@ import {
 
 const router = express.Router();
 
+// 应用认证中间件到所有路由
+router.use(authenticateToken);
+
 // POST /create - Create a new room
-router.post('/create', authenticateToken, async (req, res) => {
+router.post('/create', async (req, res) => {
     try {
         const { name, description, room_type } = req.body;
-        const creatorId = req.user.userId; // Assuming authenticateToken sets req.user.userId
+        const creatorId = req.user.id; // 从认证中间件获取用户ID
 
-        if (!name) { // room_type is no longer strictly required here
+        if (!name) {
             return res.status(400).json({ success: false, message: 'Room name is required.' });
         }
         // Validate room_type only if it's provided by the client
@@ -40,7 +43,7 @@ router.post('/create', authenticateToken, async (req, res) => {
 });
 
 // GET /list - Get a list of public rooms
-router.get('/list', async (req, res) => { // No auth needed for listing public rooms
+router.get('/list', async (req, res) => {
     try {
         const result = await listPublicRooms();
         if (result.success) {
@@ -55,10 +58,10 @@ router.get('/list', async (req, res) => { // No auth needed for listing public r
 });
 
 // POST /join/:roomId - Join a room
-router.post('/join/:roomId', authenticateToken, async (req, res) => {
+router.post('/join/:roomId', async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user.id; // 从认证中间件获取用户ID
 
         if (!roomId) {
             return res.status(400).json({ success: false, message: 'Room ID is required.' });
@@ -78,10 +81,10 @@ router.post('/join/:roomId', authenticateToken, async (req, res) => {
 });
 
 // POST /leave/:roomId - Leave a room
-router.post('/leave/:roomId', authenticateToken, async (req, res) => {
+router.post('/leave/:roomId', async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user.id; // 从认证中间件获取用户ID
 
         if (!roomId) {
             return res.status(400).json({ success: false, message: 'Room ID is required.' });
@@ -101,9 +104,7 @@ router.post('/leave/:roomId', authenticateToken, async (req, res) => {
 });
 
 // GET /:roomId/members - Get members of a specific room
-router.get('/:roomId/members', authenticateToken, async (req, res) => {
-    // Auth is good here to ensure only logged-in users can see members,
-    // could be further restricted to room members only if needed via service logic.
+router.get('/:roomId/members', async (req, res) => {
     try {
         const { roomId } = req.params;
         if (!roomId) {
@@ -124,10 +125,10 @@ router.get('/:roomId/members', authenticateToken, async (req, res) => {
 });
 
 // DELETE /:roomId - Delete a room (only by creator)
-router.delete('/:roomId', authenticateToken, async (req, res) => {
+router.delete('/:roomId', async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user.id; // 从认证中间件获取用户ID
 
         if (!roomId) {
             return res.status(400).json({ success: false, message: 'Room ID is required.' });

@@ -1,7 +1,7 @@
 import { AuthManager } from './auth.js';
 import { initNavbar } from './navbar.js';
 import { apiService } from './apiService.js';
-import { store } from './store.js'; // For notifications
+import { showNotification } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const auth = AuthManager.getInstance();
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userListContainer = document.getElementById('user-list-container');
     if (!userListContainer) {
         console.error('User list container not found.');
-        store.addNotification('页面结构错误，无法显示用户列表。', 'error');
+        showNotification('页面结构错误，无法显示用户列表。', 'error');
         return;
     }
 
@@ -45,7 +45,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // userIdSpan.textContent = ` (ID: ${user.id})`;
 
                     li.appendChild(usernameSpan);
-                    // li.appendChild(userIdSpan);
+
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'status';
+                    statusSpan.textContent = `Status: ${user.status || 'N/A'}`;
+                    li.appendChild(statusSpan);
 
                     // Future: Could add profile picture, status indicator, link to profile etc.
                     // Example: Link to a (non-existent yet) user profile page
@@ -62,11 +66,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             console.error('Failed to fetch user list:', response.message);
             userListContainer.innerHTML = `<p class="error-message">无法加载用户列表: ${response.message || '未知错误'}</p>`;
-            store.addNotification(`无法加载用户列表: ${response.message || '未知错误'}`, 'error');
+            showNotification(`无法加载用户列表: ${response.message || '未知错误'}`, 'error');
         }
     } catch (error) {
         console.error('Error fetching user list:', error);
         userListContainer.innerHTML = '<p class="error-message">加载用户列表时发生网络或服务器错误。</p>';
-        store.addNotification('加载用户列表时发生网络或服务器错误。', 'error');
+        showNotification('加载用户列表时发生网络或服务器错误。', 'error');
     }
 });

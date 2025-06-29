@@ -4,20 +4,402 @@
 .servers-page-container {
     margin-top: calc(var(--navbar-top-offset) + var(--navbar-height) + 20px);
     margin-left: 20px;
-    /* 20px from left edge */
     margin-right: 20px;
-    /* 20px from right edge */
     margin-bottom: 20px;
     width: auto;
-    /* Let margins define width */
-    /* max-width: 1400px; */
-    /* Removed max-width */
+    max-width: 1200px;
     padding: 20px;
-    /* 20px internal padding */
     box-sizing: border-box;
-    /* padding 和 border 计算在width/height内 */
     display: flex;
-    /* 默认为flex布局，垂直排列子元素 */
     flex-direction: column;
-    /* 确保标题和列表垂直排列 */
+    margin: 0 auto;
+}
+
+/* 页面头部样式 */
+.servers-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.servers-page-header h1 {
+    margin: 0;
+    font-size: 2.2em;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.servers-page-header .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+/* 服务器列表容器 */
+#serverList {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* 服务器表格样式 */
+.server-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.server-table th,
+.server-table td {
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+    color: var(--text-color);
+    vertical-align: middle;
+}
+
+.server-table th {
+    background-color: rgba(255, 255, 255, 0.08);
+    font-weight: 600;
+    color: var(--text-color);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.075em;
+}
+
+.server-table td {
+    font-size: 0.9em;
+}
+
+.server-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.server-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.server-table .server-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.server-table .server-info i {
+    color: var(--primary-color);
+    font-size: 1.2em;
+}
+
+.server-table .server-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.server-table .server-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.8em;
+    min-width: auto;
+}
+
+.server-table .no-data {
+    text-align: center;
+    padding: 40px 25px;
+    color: var(--text-light);
+    font-style: italic;
+    font-size: 1em;
+}
+
+.server-table .no-data i {
+    margin-right: 15px;
+    font-size: 1.3em;
+    vertical-align: middle;
+    color: var(--text-light);
+}
+
+/* 空状态样式 */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 20px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    margin: 20px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: var(--text-light);
+    opacity: 0.6;
+}
+
+.empty-state h3 {
+    margin-bottom: 15px;
+    color: var(--text-color);
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin-bottom: 25px;
+    color: var(--text-light);
+    max-width: 400px;
+    line-height: 1.6;
+}
+
+.empty-state button {
+    margin-top: 10px;
+    padding: 12px 24px;
+    font-size: 1em;
+}
+
+/* 服务器详情模态框特定样式 */
+#serverDetailModal .modal-content {
+    max-width: 800px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.server-detail-header {
+    padding: 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.server-detail-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.server-detail-header p {
+    margin: 0;
+    color: var(--text-light);
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.server-detail-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.server-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.server-button.edit-button {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.server-button.edit-button:hover {
+    background-color: rgba(255, 193, 7, 0.3);
+    border-color: rgba(255, 193, 7, 0.5);
+}
+
+.server-button.delete-button {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.server-button.delete-button:hover {
+    background-color: rgba(220, 53, 69, 0.3);
+    border-color: rgba(220, 53, 69, 0.5);
+}
+
+/* 侧边栏标签页 */
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+    color: var(--text-color);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+/* 侧边栏内容 */
+.sidebar-content>div {
+    display: none;
+}
+
+.sidebar-content>div.active {
+    display: block;
+}
+
+/* 成员列表样式 */
+.member-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.member-item:last-child {
+    border-bottom: none;
+}
+
+.member-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.member-info i {
+    color: var(--primary-color);
+    font-size: 1.1em;
+}
+
+.member-name {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.member-role {
+    font-size: 0.85em;
+    color: var(--text-light);
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.member-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.member-actions .btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    min-width: auto;
+}
+
+/* 加入申请样式 */
+.join-request-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.join-request-item:last-child {
+    border-bottom: none;
+}
+
+.join-request-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.join-request-info i {
+    color: var(--primary-color);
+    font-size: 1.1em;
+}
+
+.join-request-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.join-request-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.8em;
+    min-width: auto;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .servers-page-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .servers-page-header h1 {
+        font-size: 1.8em;
+    }
+
+    .server-table th,
+    .server-table td {
+        padding: 8px 12px;
+        font-size: 0.85em;
+    }
+
+    .server-table .server-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .modal-content {
+        margin: 10% auto;
+        padding: 20px;
+        width: 95%;
+    }
+
+    .server-detail-actions {
+        flex-direction: column;
+    }
+
+    .sidebar-tabs {
+        flex-direction: column;
+    }
+
+    .tab-button {
+        text-align: left;
+        border-bottom: none;
+        border-left: 2px solid transparent;
+    }
+
+    .tab-button.active {
+        border-left-color: var(--primary-color);
+        border-bottom-color: transparent;
+    }
 }

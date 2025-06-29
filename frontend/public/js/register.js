@@ -7,7 +7,8 @@
  */
 import { AuthManager } from './auth.js';
 import { initNavbar } from './navbar.js';
-import { apiService } from './apiService.js'; // Added import
+import { apiService } from './apiService.js';
+import { showNotification } from './utils.js';
 
 const auth = AuthManager.getInstance();
 if (auth.isAuthenticated()) {
@@ -28,10 +29,10 @@ async function loadAndRenderOrganizations() {
 
         // Check if the apiService request itself was successful (e.g. HTTP 200) AND
         // if the backend operation indicated success within its own response structure.
-        if (result.success && result.data && result.data.success && result.data.data) {
-            if (result.data.data.length > 0) {
+        if (result.success && result.data && Array.isArray(result.data)) {
+            if (result.data.length > 0) {
                 container.innerHTML = ''; // Clear "Loading..."
-                result.data.data.forEach(org => { // Iterate over result.data.data
+                result.data.forEach(org => { // Iterate over result.data
                     const div = document.createElement('div');
                     div.classList.add('checkbox-item');
 
@@ -52,14 +53,14 @@ async function loadAndRenderOrganizations() {
                     div.appendChild(label);
                     container.appendChild(div);
                 });
-            } else { // result.data.data.length === 0
+            } else { // result.data.length === 0
                 container.innerHTML = '<p>暂无公开组织可供选择加入。</p>';
             }
         } else {
             // This 'else' handles cases where:
             // 1. apiService.request failed (result.success is false, e.g., network error, 500 from server)
             // 2. apiService.request succeeded (HTTP 200) but backend indicated failure (result.data.success is false)
-            // 3. The structure of result.data or result.data.data is not as expected.
+            // 3. The structure of result.data is not as expected.
             container.innerHTML = '<p>无法加载组织列表，请稍后再试。</p>';
             // Log the message from apiService if result.success is false,
             // or the message from the backend if result.data.success is false.
@@ -91,8 +92,7 @@ form.addEventListener('submit', async (e) => {
     error.textContent = '';
 
     if (!username) {
-        error.textContent = '请输入用户名';
-        error.style.display = 'block';
+        showNotification('请输入用户名', 'error');
         return;
     }
 
@@ -110,32 +110,27 @@ form.addEventListener('submit', async (e) => {
     // }
 
     if (username.length < 3 || username.length > 20) {
-        error.textContent = '用户名长度应在3-20个字符之间';
-        error.style.display = 'block';
+        showNotification('用户名长度应在3-20个字符之间', 'error');
         return;
     }
 
     if (!password) {
-        error.textContent = '请输入密码';
-        error.style.display = 'block';
+        showNotification('请输入密码', 'error');
         return;
     }
 
     if (password.length < 6) {
-        error.textContent = '密码长度至少为6个字符';
-        error.style.display = 'block';
+        showNotification('密码长度至少为6个字符', 'error');
         return;
     }
 
     if (password !== confirmPassword) {
-        error.textContent = '两次输入的密码不一致';
-        error.style.display = 'block';
+        showNotification('两次输入的密码不一致', 'error');
         return;
     }
 
     if (note && note.length > 500) {
-        error.textContent = '备注信息不能超过500个字符';
-        error.style.display = 'block';
+        showNotification('备注信息不能超过500个字符', 'error');
         return;
     }
 
@@ -152,21 +147,15 @@ form.addEventListener('submit', async (e) => {
         });
 
         if (result.success) {
-            error.className = 'success';
-            error.textContent = '注册成功，正在跳转到登录页面...';
-            error.style.display = 'block';
+            showNotification('注册成功，正在跳转到登录页面...', 'success');
 
             setTimeout(() => {
                 window.location.href = '/login';
             }, 1500);
         } else {
-            error.className = 'error';
-            error.textContent = result.message || '注册失败，请重试';
-            error.style.display = 'block';
+            showNotification(result.message || '注册失败，请重试', 'error');
         }
     } catch (err) {
-        error.className = 'error';
-        error.textContent = '网络错误，请稍后重试';
-        error.style.display = 'block';
+        showNotification('网络错误，请稍后重试', 'error');
     }
 });

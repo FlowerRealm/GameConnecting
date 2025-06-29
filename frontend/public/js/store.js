@@ -32,9 +32,6 @@ class Store {
         if (this.listeners.has(key)) {
             this.listeners.get(key).forEach(callback => {
                 try {
-                    if (key === 'notifications') {
-                        this.renderNotifications(this.state[key]);
-                    }
                     callback(this.state[key]);
                 } catch (error) {
                 }
@@ -89,43 +86,6 @@ class Store {
         };
         ['user', 'servers', 'friends'].forEach(key => {
             localStorage.removeItem(`gc_${key}`);
-        });
-    }
-
-    addNotification(message, type = 'info', duration = 5000) {
-        const notification = {
-            id: Date.now(),
-            message,
-            type,
-            timestamp: new Date()
-        };
-        this.setState('notifications', [...this.state.notifications, notification]);
-
-        if (duration > 0) {
-            setTimeout(() => {
-                this.removeNotification(notification.id);
-            }, duration);
-        }
-    }
-
-    removeNotification(id) {
-        this.setState('notifications',
-            this.state.notifications.filter(n => n.id !== id)
-        );
-    }
-
-    renderNotifications(notifications) {
-        const container = document.getElementById('notification-container');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        notifications.forEach(notification => {
-            const notificationEl = document.createElement('div');
-            notificationEl.className = `notification-item ${notification.type}`;
-            notificationEl.textContent = notification.message;
-            notificationEl.dataset.id = notification.id;
-            container.appendChild(notificationEl);
         });
     }
 }

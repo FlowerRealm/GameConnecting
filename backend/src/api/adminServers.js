@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken, isAdmin } from '../middleware/auth.js';
+
 import {
     getAllServersForAdmin,
     createRoom,
@@ -8,11 +8,37 @@ import {
     getRoomMembers,
     kickMemberByAdmin // Added kickMemberByAdmin
 } from '../services/roomService.js';
+import { deleteCache } from '../utils/cache.js';
 
 const router = express.Router();
 
+// POST /api/admin/servers - Create server by admin
+router.post('/', async (req, res) => {
+    const { name, description, room_type, adminUserId } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ success: false, message: 'Server name is required.' });
+    }
+    if (room_type && !['public', 'private'].includes(room_type)) {
+        return res.status(400).json({ success: false, message: "Invalid room_type. Must be 'public' or 'private'." });
+    }
+
+    try {
+        const result = await createRoom(name, description, room_type || 'public', adminUserId);
+        if (result.success) {
+            deleteCache('servers_list'); // Invalidate servers list cache
+            res.status(201).json({ success: true, data: result.data, message: 'Server created successfully by admin.' });
+        } else {
+            res.status(result.error?.status || 500).json({ success: false, message: result.error?.message || 'Failed to create server by admin.' });
+        }
+    } catch (error) {
+        console.error('Error in POST /api/admin/servers route:', error);
+        res.status(500).json({ success: false, message: 'An unexpected error occurred on the server while creating room.' });
+    }
+});
+
 // GET /api/admin/servers - List all servers for admin view (with pagination)
-router.get('/', authenticateToken, isAdmin, async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10; // Default limit to 10
@@ -36,7 +62,7 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // DELETE /api/admin/servers/:serverId/members/:userId - Kick a member from a server by admin
-router.delete('/:serverId/members/:userId', authenticateToken, isAdmin, async (req, res) => {
+router.delete('/:serverId/members/:userId', async (req, res) => {
     const { serverId, userId } = req.params;
 
     if (!serverId || !userId) { // Should be caught by route structure
@@ -57,7 +83,7 @@ router.delete('/:serverId/members/:userId', authenticateToken, isAdmin, async (r
 });
 
 // GET /api/admin/servers/:serverId/members - Get members of a specific server for admin view
-router.get('/:serverId/members', authenticateToken, isAdmin, async (req, res) => {
+router.get('/:serverId/members', async (req, res) => {
     const { serverId } = req.params;
 
     if (!serverId) { // Should be caught by route structure
@@ -78,7 +104,7 @@ router.get('/:serverId/members', authenticateToken, isAdmin, async (req, res) =>
 });
 
 // DELETE /api/admin/servers/:serverId - Delete server by admin
-router.delete('/:serverId', authenticateToken, isAdmin, async (req, res) => {
+router.delete('/:serverId', async (req, res) => {
     const { serverId } = req.params;
 
     if (!serverId) { // Should be caught by route structure, but good practice
@@ -88,6 +114,7 @@ router.delete('/:serverId', authenticateToken, isAdmin, async (req, res) => {
     try {
         const result = await deleteServerByAdmin(serverId);
         if (result.success) {
+            deleteCache('servers_list'); // Invalidate servers list cache
             res.json({ success: true, message: result.message || 'Server deleted successfully by admin.' });
         } else {
             res.status(result.error?.status || 500).json({ success: false, message: result.error?.message || 'Failed to delete server by admin.' });
@@ -99,7 +126,7 @@ router.delete('/:serverId', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // PUT /api/admin/servers/:serverId - Update server by admin
-router.put('/:serverId', authenticateToken, isAdmin, async (req, res) => {
+router.put('/:serverId', async (req, res) => {
     const { serverId } = req.params;
     const updates = req.body; // Should contain fields like name, description, room_type
 
@@ -112,6 +139,7 @@ router.put('/:serverId', authenticateToken, isAdmin, async (req, res) => {
     try {
         const result = await updateServerByAdmin(serverId, updates);
         if (result.success) {
+            deleteCache('servers_list'); // Invalidate servers list cache
             res.json({ success: true, data: result.data, message: 'Server updated successfully by admin.' });
         } else {
             res.status(result.error?.status || 500).json({ success: false, message: result.error?.message || 'Failed to update server by admin.' });
@@ -122,36 +150,6 @@ router.put('/:serverId', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// Placeholder for other admin server routes (create, update, delete, members)
-// POST / - Create server by admin
-// PUT /:serverId - Update server by admin
-// DELETE /:serverId - Delete server by admin
-// GET /:serverId/members - Get server members for admin
-// DELETE /:serverId/members/:userId - Kick member by admin
 
-// POST /api/admin/servers - Create server by admin
-router.post('/', authenticateToken, isAdmin, async (req, res) => {
-    const { name, description, room_type } = req.body;
-    const adminUserId = req.user.id; // Admin's user ID from token
-
-    if (!name) {
-        return res.status(400).json({ success: false, message: 'Server name is required.' });
-    }
-    if (room_type && !['public', 'private'].includes(room_type)) {
-        return res.status(400).json({ success: false, message: "Invalid room_type. Must be 'public' or 'private'." });
-    }
-
-    try {
-        const result = await createRoom(name, description, room_type || 'public', adminUserId);
-        if (result.success) {
-            res.status(201).json({ success: true, data: result.data, message: 'Server created successfully by admin.' });
-        } else {
-            res.status(result.error?.status || 500).json({ success: false, message: result.error?.message || 'Failed to create server by admin.' });
-        }
-    } catch (error) {
-        console.error('Error in POST /api/admin/servers route:', error);
-        res.status(500).json({ success: false, message: 'An unexpected error occurred on the server while creating room.' });
-    }
-});
 
 export default router;

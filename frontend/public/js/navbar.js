@@ -8,12 +8,16 @@ export function initNavbar() {
         navbarElement.classList.add('glassmorphic-container');
     }
 
-
     const navMenu = document.getElementById('navMenu');
     const authButtons = document.getElementById('authButtons');
 
+    const toggleDropdown = () => {
+        const dropdown = document.getElementById('userDropdown');
+        dropdown?.classList.toggle('show');
+    };
+
     if (auth.isAuthenticated()) {
-        const userRole = auth.getRole(); // Use auth.getRole()
+        const userRole = auth.getRole();
 
         // 根据用户角色显示不同的导航菜单
         if (userRole === 'admin') {
@@ -30,7 +34,7 @@ export function initNavbar() {
 
         authButtons.innerHTML = `
             <div class="dropdown">
-                <div class="user-avatar" onclick="toggleDropdown()">
+                <div class="user-avatar" id="userAvatar">
                     <span>${auth.getUsername()?.charAt(0).toUpperCase() || '?'}</span>
                 </div>
                 <div class="dropdown-content" id="userDropdown">
@@ -39,6 +43,8 @@ export function initNavbar() {
                 </div>
             </div>
         `;
+
+        document.getElementById('userAvatar')?.addEventListener('click', toggleDropdown);
         // If "个人资料" is a main nav item, it could be removed from dropdown for less redundancy,
         // but keeping it is also fine for quick access. For now, it's kept as per original structure.
 
@@ -61,18 +67,3 @@ export function initNavbar() {
         }
     });
 }
-
-window.toggleDropdown = function () {
-    const dropdown = document.getElementById('userDropdown');
-    dropdown?.classList.toggle('show');
-};
-document.addEventListener('click', (event) => {
-    if (!event.target.matches('.user-avatar')) {
-        const dropdowns = document.getElementsByClassName('dropdown-content');
-        for (const dropdown of dropdowns) {
-            if (dropdown.classList.contains('show')) {
-                dropdown.classList.remove('show');
-            }
-        }
-    }
-});

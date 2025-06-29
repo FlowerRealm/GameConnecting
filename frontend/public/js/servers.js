@@ -2,7 +2,8 @@ import { AuthManager } from './auth.js';
 import { apiService } from './apiService.js';
 import { config } from './config.js';
 import { initNavbar } from './navbar.js';
-import { store } from './store.js';
+import { showNotification, formatDateTime } from './utils.js';
+import { modalHandler, tabHandler, formHandler } from './eventHandler.js';
 
 const auth = AuthManager.getInstance();
 let editingServerId = null;
@@ -14,394 +15,420 @@ if (!auth.isAuthenticated()) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!auth.isAuthenticated()) { // Double check
+    if (!auth.isAuthenticated()) {
         window.location.href = '/login';
         return;
     }
+
     initNavbar();
     loadServers();
-    document.getElementById('serverForm').addEventListener('submit', handleServerSubmit);
 
-    document.getElementById('serverDetailModal').addEventListener('click', (event) => {
-        if (event.target === event.currentTarget) {
-            closeServerDetailModal();
-        }
+    // 使用通用表单处理
+    document.getElementById('serverForm').addEventListener('submit', (event) => {
+        formHandler.handleSubmit(event, handleServerFormSubmit);
     });
 
-    document.querySelectorAll('.sidebar-tabs .tab-button').forEach(button => {
-        button.addEventListener('click', handleTabSwitch);
+    // 初始化标签页
+    tabHandler.init('.sidebar-tabs', {
+        'members': () => loadServerMembers(currentModalServerInfo.id),
+        'requests': () => loadJoinRequests(currentModalServerInfo.id)
     });
+
+    // 将全局函数暴露给HTML
+    window.showAddServerModal = showAddServerModal;
+    window.joinServer = joinServer;
+    window.showServerDetail = showServerDetail;
+    window.editServer = editServer;
+    window.deleteServer = deleteServer;
+    window.closeModal = () => modalHandler.close('addServerModal');
+    window.closeServerDetailModal = () => modalHandler.close('serverDetailModal');
 });
-function handleTabSwitch(event) {
-    const targetTab = event.target.dataset.tab;
 
-    // 移除所有标签页的active类
-    document.querySelectorAll('.sidebar-tabs .tab-button').forEach(button => {
-        button.classList.remove('active');
-    });
-    document.querySelectorAll('.sidebar-content > div').forEach(content => {
-        content.classList.remove('active');
-    });
-
-    event.target.classList.add('active');
-    document.querySelector(`.sidebar-content > div[data-tab-content="${targetTab}"]`).classList.add('active');
-
-    const currentServerId = document.getElementById('serverDetailModal').dataset.serverId;
-    if (currentServerId) {
-        if (targetTab === 'members') {
-            loadServerMembers(currentServerId);
-        } else if (targetTab === 'requests') {
-            loadJoinRequests(currentServerId);
-        }
-    }
-}
 async function loadServers() {
     try {
-        // 根据用户角色决定加载所有服务器还是仅加入的服务器
-        // 这里我们假设普通用户看到的是他们可以加入或已加入的服务器列表
-        // 管理员可能看到所有服务器
-        const apiResponse = await apiService.request('/api/rooms/list'); // Changed endpoint
-        // apiResponse.data from apiService is the backend's response: { success: boolean, data: array | object, message?: string }
+        const response = await apiService.request('/api/rooms/list');
 
-        if (apiResponse.success && apiResponse.data && apiResponse.data.success && Array.isArray(apiResponse.data.data)) {
-            renderServers(apiResponse.data.data); // Pass the actual array of rooms
+        if (response.success) {
+            renderServers(response.data || []);
         } else {
-            // Handle cases where HTTP request failed, backend logic failed, or data format is incorrect
-            const errorMessage = apiResponse.data?.message || apiResponse.message || '加载服务器列表失败';
-            showError(errorMessage);
-            console.error('Error loading servers/rooms:', errorMessage, 'Full apiResponse:', apiResponse);
+            showNotification(response.message || '加载服务器列表失败');
+            console.error('Error loading servers:', response.message);
         }
     } catch (error) {
         console.error('Exception in loadServers:', error);
-        showError('加载服务器列表时发生网络或意外错误'); // "Network or unexpected error occurred while loading server list"
+        showNotification('加载服务器列表时发生错误');
     }
 }
 
 function renderServers(servers) {
-    const serverList = document.getElementById('serverList');
-    const isAdmin = auth.isAdmin();
-    const currentUserId = auth.getUserId();
+    const serverListContainer = document.getElementById('serverList');
+    serverListContainer.innerHTML = '';
 
-    let html = '';
-    if (servers.length === 0) {
-        serverList.innerHTML = '<p class="no-servers-message">暂无可用服务器。您可以尝试创建一个！</p>';
+    if (!servers || servers.length === 0) {
+        serverListContainer.innerHTML = `
+            <table class="server-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-server"></i> 服务器名称</th>
+                        <th><i class="fas fa-info-circle"></i> 描述</th>
+                        <th><i class="fas fa-users"></i> 成员数</th>
+                        <th><i class="fas fa-cog"></i> 操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" class="no-data">
+                            <i class="fas fa-server"></i>
+                            暂无可用服务器
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="text-align:center;margin-top:20px">
+                <button class="btn btn-primary" onclick="showAddServerModal()">
+                    <i class="fas fa-plus"></i> 创建服务器
+                </button>
+            </div>
+        `;
         return;
     }
 
+    let html = `
+        <table class="server-table">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-server"></i> 服务器名称</th>
+                    <th><i class="fas fa-info-circle"></i> 描述</th>
+                    <th><i class="fas fa-users"></i> 成员数</th>
+                    <th><i class="fas fa-cog"></i> 操作</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
     servers.forEach(server => {
-        const memberCount = server.onlineMembers || 0;
         html += `
-            <div class="server-card glassmorphic-container" data-id="${server.id}">
-                <div class="server-header">
-                    <h3>${server.name}</h3>
-                    <div class="server-stats">
-                        <span class="member-count"><i class="fas fa-users"></i>${memberCount}</span>
-                        <span class="member-count-suffix">位成员在线</span>
+            <tr>
+                <td>
+                    <div class="server-info">
+                        <i class="fas fa-server"></i>
+                        ${server.name}
                     </div>
-                </div>
-            </div>
+                </td>
+                <td>${server.description || '暂无描述'}</td>
+                <td>${server.member_count || 0}</td>
+                <td>
+                    <div class="server-actions">
+                        <button class="btn btn-primary btn-sm" onclick="joinServer('${server.id}')">
+                            <i class="fas fa-sign-in-alt"></i> 加入
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="showServerDetail('${server.id}')">
+                            <i class="fas fa-eye"></i> 详情
+                        </button>
+                    </div>
+                </td>
+            </tr>
         `;
     });
 
-    serverList.innerHTML = html;
-
-    serverList.querySelectorAll('.server-card').forEach(item => {
-        item.addEventListener('click', (e) => {
-            showServerDetail(item.dataset.id);
-        });
-    });
-}
-
-async function showServerDetail(serverId) {
-    try {
-        const response = await apiService.request(`/servers/${serverId}`);
-        if (response.success) {
-            if (!response.data || !response.data.success || !response.data.data) {
-                showError('获取服务器详情失败: 响应数据格式不正确。');
-                return;
-            }
-            const server = response.data.data;
-            const currentUserId = auth.getUserId();
-
-            currentModalServerInfo.id = server.id;
-            currentModalServerInfo.isOwner = server.createdBy === currentUserId;
-            currentModalServerInfo.isSiteAdmin = auth.isAdmin();
-            currentModalServerInfo.members = server.members || [];
-
-            const isMember = server.members?.some(member => member.id === currentUserId);
-
-            document.getElementById('detailServerName').textContent = server.name;
-            document.getElementById('detailServerDescription').textContent = server.description || '暂无描述';
-
-            const actionsDiv = document.getElementById('serverDetailActions');
-            actionsDiv.innerHTML = '';
-
-            const mainActionButton = document.createElement('button');
-            mainActionButton.className = 'btn btn-primary';
-
-            if (isMember) {
-                mainActionButton.textContent = '进入服务器';
-                mainActionButton.onclick = () => {
-                    window.location.href = `/chat?serverId=${serverId}`;
-                };
-            } else {
-                mainActionButton.textContent = '加入服务器';
-                mainActionButton.onclick = () => joinServer(serverId);
-            }
-            actionsDiv.appendChild(mainActionButton);
-
-            if (currentModalServerInfo.isSiteAdmin || currentModalServerInfo.isOwner) {
-                const editButton = document.createElement('button');
-                editButton.className = 'server-button edit-button';
-                editButton.innerHTML = '<i class="fas fa-edit"></i> 编辑';
-                editButton.onclick = (e) => { e.stopPropagation(); editServer(serverId); };
-                actionsDiv.appendChild(editButton);
-
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'server-button delete-button';
-                deleteButton.innerHTML = '<i class="fas fa-trash"></i> 删除';
-                deleteButton.onclick = (e) => { e.stopPropagation(); deleteServer(serverId); };
-                actionsDiv.appendChild(deleteButton);
-            }
-
-            document.getElementById('serverDetailModal').dataset.serverId = serverId;
-            document.getElementById('serverDetailModal').style.display = 'block';
-
-            // 默认加载成员列表
-            document.querySelector('#serverDetailModal .sidebar-tabs .tab-button[data-tab="members"]').click();
-        } else {
-            showError(response.message);
-        }
-    } catch (error) {
-        showError('获取服务器详情失败');
-    }
+    html += '</tbody></table>';
+    serverListContainer.innerHTML = html;
 }
 
 function showAddServerModal() {
     editingServerId = null;
-    document.getElementById('modalTitle').textContent = '创建服务器';
-    document.getElementById('serverForm').reset();
-    document.getElementById('serverModal').style.display = 'block';
+    formHandler.resetForm('serverForm');
+    document.getElementById('serverModalTitle').textContent = '创建新服务器';
+    document.getElementById('serverSubmitBtn').textContent = '创建';
+    modalHandler.show('addServerModal');
 }
+
 async function editServer(serverId) {
-    event.stopPropagation();
-    editingServerId = serverId;
     try {
-        const response = await apiService.request(`/servers/${serverId}`);
-        if (response.success) {
-            const server = response.data;
-            document.getElementById('modalTitle').textContent = `编辑服务器: ${server.name}`;
-            document.getElementById('serverName').value = server.name;
-            document.getElementById('serverDescription').value = server.description || '';
-            document.getElementById('serverModal').style.display = 'block';
+        const response = await apiService.request(`/api/rooms/${serverId}`);
+        if (response.success && response.data) {
+            editingServerId = serverId;
+            formHandler.fillForm('serverForm', {
+                name: response.data.name,
+                description: response.data.description
+            });
+            document.getElementById('serverModalTitle').textContent = '编辑服务器';
+            document.getElementById('serverSubmitBtn').textContent = '保存';
+            modalHandler.show('addServerModal');
         } else {
-            showError(response.message);
+            showNotification('获取服务器信息失败', 'error');
         }
     } catch (error) {
-        showError('获取服务器信息失败');
+        console.error('Error editing server:', error);
+        showNotification('编辑服务器时发生错误', 'error');
     }
 }
 
-async function handleServerSubmit(event) {
-    event.preventDefault();
-
-    const serverData = {
-        name: document.getElementById('serverName').value,
-        description: document.getElementById('serverDescription').value
-    };
-
+async function handleServerFormSubmit(data) {
     try {
-        let response;
-        if (editingServerId) {
-            response = await apiService.request(`/servers/${editingServerId}`, {
-                method: 'PUT',
-                body: JSON.stringify(serverData)
-            });
-        } else {
-            response = await apiService.request('/api/rooms/create', { // Changed endpoint
-                method: 'POST',
-                body: JSON.stringify(serverData)
-            });
-        }
+        const { name, description } = data;
+        const endpoint = editingServerId
+            ? `/api/rooms/${editingServerId}`
+            : '/api/rooms/create';
+        const method = editingServerId ? 'PUT' : 'POST';
+
+        const response = await apiService.request(endpoint, {
+            method,
+            body: JSON.stringify({ name, description })
+        });
 
         if (response.success) {
-            closeModal();
-            if (editingServerId) {
-                loadServers();
-                showSuccess('服务器更新成功');
-            } else {
-                // 创建服务器成功后立即跳转到聊天页面
-                const serverId = response.data.data.id;
-                showSuccess('服务器创建成功，正在进入...');
-                setTimeout(() => {
-                    window.location.href = `/chat?serverId=${serverId}`;
-                }, 1000);
-            }
+            showNotification(editingServerId ? '服务器更新成功' : '服务器创建成功', 'success');
+            modalHandler.close('addServerModal');
+            loadServers();
         } else {
-            showError(response.message);
+            showNotification(response.message || '操作失败', 'error');
         }
     } catch (error) {
-        showError(editingServerId ? '更新服务器失败' : '创建服务器失败');
+        console.error('Server form submission error:', error);
+        showNotification('提交表单时发生错误', 'error');
     }
 }
 
 async function deleteServer(serverId) {
-    event.stopPropagation();
-    if (!confirm('确定要删除这个服务器吗？这将删除所有聊天记录。')) {
+    if (!confirm('确定要删除此服务器吗？此操作不可撤销。')) {
         return;
     }
+
     try {
-        const response = await apiService.request(`/servers/${serverId}`, {
+        const response = await apiService.request(`/api/rooms/${serverId}`, {
             method: 'DELETE'
         });
 
         if (response.success) {
-            closeServerDetailModal();
+            showNotification('服务器已删除', 'success');
+            modalHandler.close('serverDetailModal');
             loadServers();
-            showSuccess('服务器删除成功');
         } else {
-            showError(response.message);
+            showNotification(response.message || '删除服务器失败', 'error');
         }
     } catch (error) {
-        showError('删除服务器失败');
+        console.error('Error deleting server:', error);
+        showNotification('删除服务器时发生错误', 'error');
     }
 }
 
 async function joinServer(serverId) {
     try {
-        const response = await apiService.request(`/servers/${serverId}/join`, { method: 'POST' });
+        const response = await apiService.request(`/api/rooms/join/${serverId}`, {
+            method: 'POST'
+        });
 
         if (response.success) {
-            const actualMessage = (response.data && response.data.message) || response.message;
-
-            if (actualMessage === '您已经是该服务器的成员') {
-                window.location.href = `/chat?serverId=${serverId}`;
-            } else if (actualMessage && actualMessage.includes('申请已发送')) {
-                showSuccess(actualMessage);
-            } else {
-                showError(actualMessage || '处理加入请求时发生未知响应。');
-            }
+            showNotification('已成功加入服务器', 'success');
+            window.location.href = '/chat.html?server=' + serverId;
         } else {
-            showError(response.message || '加入服务器失败');
+            showNotification(response.message || '加入服务器失败', 'error');
         }
     } catch (error) {
-        if (error && error.message === '您已经是该服务器的成员') {
-            window.location.href = `/chat?serverId=${serverId}`;
+        console.error('Error joining server:', error);
+        showNotification('加入服务器时发生错误', 'error');
+    }
+}
+
+async function showServerDetail(serverId) {
+    try {
+        const response = await apiService.request(`/api/rooms/${serverId}`);
+        if (response.success && response.data) {
+            const server = response.data;
+            const currentUserId = auth.getUserId();
+
+            // 更新当前模态框信息
+            currentModalServerInfo = {
+                id: server.id,
+                isOwner: server.creator_id === currentUserId,
+                isSiteAdmin: auth.isAdmin(),
+                members: server.members || []
+            };
+
+            // 填充服务器详情
+            document.getElementById('detailServerName').textContent = server.name;
+            document.getElementById('detailServerDescription').textContent = server.description || '暂无描述';
+            document.getElementById('detailServerCreator').textContent = server.creator?.username || '未知';
+            document.getElementById('detailServerCreated').textContent = formatDateTime(server.created_at);
+
+            // 设置操作按钮
+            const actionButtons = document.getElementById('serverDetailActions');
+            if (currentModalServerInfo.isOwner || currentModalServerInfo.isSiteAdmin) {
+                actionButtons.innerHTML = `
+                    <button class="btn btn-warning" onclick="editServer('${server.id}')">
+                        <i class="fas fa-edit"></i> 编辑
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteServer('${server.id}')">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                `;
+            } else {
+                actionButtons.innerHTML = `
+                    <button class="btn btn-primary" onclick="joinServer('${server.id}')">
+                        <i class="fas fa-sign-in-alt"></i> 加入
+                    </button>
+                `;
+            }
+
+            // 加载成员列表
+            loadServerMembers(serverId);
+
+            // 显示模态框
+            modalHandler.show('serverDetailModal', { serverId });
         } else {
-            showError(error.message || '加入服务器失败');
+            showNotification('获取服务器详情失败', 'error');
         }
+    } catch (error) {
+        console.error('Error showing server details:', error);
+        showNotification('获取服务器详情时发生错误', 'error');
     }
 }
 
 async function loadServerMembers(serverId) {
     try {
-        const response = await apiService.request(`/servers/${serverId}/members`);
+        const response = await apiService.request(`/api/rooms/${serverId}/members`);
         if (response.success) {
-            renderServerMembers(response.data);
+            renderServerMembers(response.data || []);
         } else {
-            showError(response.message);
+            showNotification('获取成员列表失败', 'error');
         }
     } catch (error) {
-        showError('加载成员列表失败');
+        console.error('Error loading server members:', error);
+        showNotification('加载成员列表时发生错误', 'error');
     }
 }
 
 function renderServerMembers(members) {
-    const memberListContainer = document.getElementById('memberListContainer');
-    const currentUserId = auth.getUserId();
-    const { isOwner, isSiteAdmin } = currentModalServerInfo;
+    const container = document.getElementById('membersList');
+    if (!container) return;
 
-    let html = '';
+    if (!members || members.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>暂无成员</p></div>';
+        return;
+    }
+
+    let html = '<ul class="members-list">';
     members.forEach(member => {
-        const isCurrentUser = member.id === currentUserId;
-        const memberRole = member.ServerMember.role;
-        const canKick = (isOwner || isSiteAdmin) && !isCurrentUser && !(isSiteAdmin && memberRole === 'owner' && !isOwner);
-
+        const user = member.user || {};
         html += `
-            <div class="member-item" data-id="${member.id}">
-                <div class="member-avatar">${member.username.charAt(0).toUpperCase()}</div>
+            <li class="member-item">
                 <div class="member-info">
-                    <span class="member-name">${member.username}</span>
-                    <span class="member-role">${memberRole === 'owner' ? '群主' : '成员'}</span>
+                    <span class="member-name">${user.username || '未知用户'}</span>
+                    <span class="member-role">${member.role || '成员'}</span>
                 </div>
-                ${canKick ? `
-                    <div class="member-actions">
-                        <button class="member-action-button kick-button" data-member-id="${member.id}" title="踢出">
-                            <i class="fas fa-user-slash"></i>
-                        </button>
-                    </div>
-                ` : ''}
-            </div>
+                ${currentModalServerInfo.isOwner && member.user_id !== auth.getUserId() ?
+                    `<button class="btn btn-danger btn-sm" onclick="kickMember('${member.user_id}')">
+                        <i class="fas fa-user-minus"></i> 踢出
+                    </button>` : ''}
+            </li>
         `;
     });
-
-    memberListContainer.innerHTML = html;
-
-    memberListContainer.querySelectorAll('.kick-button').forEach(button => {
-        button.addEventListener('click', handleKickMember);
-    });
+    html += '</ul>';
+    container.innerHTML = html;
 }
+
+// 将踢出成员函数暴露给全局
+window.kickMember = async function(userId) {
+    if (!confirm('确定要将此成员踢出服务器吗？')) {
+        return;
+    }
+
+    try {
+        const serverId = currentModalServerInfo.id;
+        const response = await apiService.request(`/api/rooms/${serverId}/kick/${userId}`, {
+            method: 'POST'
+        });
+
+        if (response.success) {
+            showNotification('成员已被踢出', 'success');
+            loadServerMembers(serverId);
+        } else {
+            showNotification(response.message || '踢出成员失败', 'error');
+        }
+    } catch (error) {
+        console.error('Error kicking member:', error);
+        showNotification('踢出成员时发生错误', 'error');
+    }
+};
 
 async function loadJoinRequests(serverId) {
     const joinRequestContainer = document.getElementById('joinRequestContainer');
     const { isOwner, isSiteAdmin } = currentModalServerInfo;
 
     if (currentModalServerInfo.id !== serverId) {
-        showError('无法加载加入申请：服务器信息不匹配。');
+        showNotification('无法加载加入申请：服务器信息不匹配。', 'error');
         return;
     }
 
-    if (!isOwner && !siteAdmin) {
+    if (!isOwner && !isSiteAdmin) {
         joinRequestContainer.innerHTML = '<p>只有服务器所有者或站点管理员可以查看加入申请。</p>';
         return;
     }
 
+    // TODO: 实现加入申请功能
+    // 目前后端还没有实现这个功能
+    joinRequestContainer.innerHTML = '<p>加入申请功能正在开发中...</p>';
+
+    // 原来的代码（暂时注释掉）
+    /*
     try {
         const response = await apiService.request(`/servers/${serverId}/join-requests`);
         if (response.success) {
             renderJoinRequests(response.data);
         } else {
-            showError(response.message);
+            showNotification(response.message, 'error');
         }
     } catch (error) {
-        showError('加载加入申请失败');
+        showNotification('加载加入申请失败', 'error');
     }
+    */
 }
 
-function renderJoinRequests(requests) {
-    const joinRequestContainer = document.getElementById('joinRequestContainer');
-    let html = '';
 
-    if (requests.length === 0) {
-        html = '<p>暂无加入申请。</p>';
-    } else {
-        requests.forEach(request => {
-            const requestedTime = new Date(request.requestedAt).toLocaleString();
-            html += `
-                <div class="join-request-item" data-request-id="${request.id}" data-server-id="${request.serverId}">
-                    <div class="request-info">
-                        <span class="requester-name">${request.requester.username}</span>
-                        <span class="request-time">${requestedTime}</span>
+function renderJoinRequests(requests) {
+    const container = document.getElementById('joinRequestContainer');
+    if (!requests || requests.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-user-plus empty-icon"></i>
+                <h3>暂无加入申请</h3>
+                <p>目前没有待处理的加入申请</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    requests.forEach(request => {
+        html += `
+            <div class="join-request-item" data-request-id="${request.id}" data-server-id="${currentModalServerInfo.id}">
+                <div class="join-request-info">
+                    <i class="fas fa-user"></i>
+                    <span class="member-name">${request.username}</span>
+                    <span class="member-role">申请加入</span>
                     </div>
-                    <div class="request-actions">
-                        <button class="approve-button">批准</button>
-                        <button class="reject-button">拒绝</button>
+                <div class="join-request-actions">
+                    <button class="btn btn-success btn-sm" onclick="handleApproveRequest(event)" data-request-id="${request.id}">
+                        <i class="fas fa-check"></i> 批准
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="handleRejectRequest(event)" data-request-id="${request.id}">
+                        <i class="fas fa-times"></i> 拒绝
+                    </button>
                     </div>
                 </div>
             `;
-        });
-    }
-
-    joinRequestContainer.innerHTML = html;
-
-    joinRequestContainer.querySelectorAll('.approve-button').forEach(button => {
-        button.addEventListener('click', handleApproveRequest);
     });
-    joinRequestContainer.querySelectorAll('.reject-button').forEach(button => {
-        button.addEventListener('click', handleRejectRequest);
-    });
+
+    container.innerHTML = html;
 }
 async function handleApproveRequest(event) {
+    // TODO: 实现批准加入申请功能
+    // 目前后端还没有实现这个功能
+    showNotification('批准加入申请功能正在开发中...', 'info');
+
+    // 原来的代码（暂时注释掉）
+    /*
     const requestItem = event.target.closest('.join-request-item');
     const requestId = requestItem.dataset.requestId;
     const serverId = requestItem.dataset.serverId;
@@ -413,18 +440,25 @@ async function handleApproveRequest(event) {
         });
 
         if (response.success) {
-            showSuccess(response.message);
+            showNotification(response.message, 'success');
             loadJoinRequests(serverId);
             loadServerMembers(serverId);
         } else {
-            showError(response.message);
+            showNotification(response.message, 'error');
         }
     } catch (error) {
-        showError('处理申请失败');
+        showNotification('处理申请失败', 'error');
     }
+    */
 }
 
 async function handleRejectRequest(event) {
+    // TODO: 实现拒绝加入申请功能
+    // 目前后端还没有实现这个功能
+    showNotification('拒绝加入申请功能正在开发中...', 'info');
+
+    // 原来的代码（暂时注释掉）
+    /*
     const requestItem = event.target.closest('.join-request-item');
     const requestId = requestItem.dataset.requestId;
     const serverId = requestItem.dataset.serverId;
@@ -436,59 +470,13 @@ async function handleRejectRequest(event) {
         });
 
         if (response.success) {
-            showSuccess(response.message);
+            showNotification(response.message, 'success');
             loadJoinRequests(serverId);
         } else {
-            showError(response.message);
+            showNotification(response.message, 'error');
         }
     } catch (error) {
-        showError('处理申请失败');
+        showNotification('处理申请失败', 'error');
     }
+    */
 }
-
-async function handleKickMember(event) {
-    const memberItem = event.target.closest('.member-item');
-    const memberId = memberItem.dataset.id;
-    const currentServerId = document.getElementById('serverDetailModal').dataset.serverId;
-    if (!currentServerId) return;
-
-    if (!confirm('确定要将该成员踢出服务器吗？')) {
-        return;
-    }
-
-    try {
-        const response = await apiService.request(`/servers/${currentServerId}/members/${memberId}`, {
-            method: 'DELETE'
-        });
-
-        if (response.success) {
-            showSuccess(response.message);
-            loadServerMembers(currentServerId);
-        } else {
-            showError(response.message);
-        }
-    } catch (error) {
-        showError('踢出成员失败');
-    }
-}
-
-function closeModal() {
-    document.getElementById('serverModal').style.display = 'none';
-}
-
-function closeServerDetailModal() {
-    document.getElementById('serverDetailModal').style.display = 'none';
-}
-
-function showError(message) {
-    store.addNotification(message, 'error');
-}
-
-function showSuccess(message) {
-    store.addNotification(message, 'success');
-}
-
-window.showAddServerModal = showAddServerModal;
-window.closeModal = closeModal;
-window.showServerDetail = showServerDetail;
-window.closeServerDetailModal = closeServerDetailModal;

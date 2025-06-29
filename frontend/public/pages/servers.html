@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器列表 - GameConnecting</title>
+    <link rel="stylesheet" href="/styles/style.css">
+    <link rel="stylesheet" href="/styles/pages/servers.css">
+    <link rel="stylesheet" href="/styles/pages/users.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-content-wrapper">
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+            </div>
+            <div class="navbar-auth" id="authButtons">
+            </div>
+        </div>
+    </nav>
+
+    <div class="servers-page-container">
+        <div class="servers-page-header">
+            <h1>服务器列表</h1>
+            <button class="btn btn-primary" onclick="showAddServerModal()">
+                <i class="fas fa-plus"></i> 创建服务器
+            </button>
+        </div>
+
+        <div id="serverList" class="server-list">
+            <!-- 服务器列表将通过JavaScript动态加载 -->
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑服务器模态窗口 -->
+    <div id="serverModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">创建服务器</h2>
+            <form id="serverForm">
+                <div class="form-group">
+                    <label for="serverName">服务器名称</label>
+                    <input type="text" id="serverName" name="name" required minlength="3" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="serverDescription">描述（可选）</label>
+                    <textarea id="serverDescription" name="description" maxlength="1000"></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 服务器详情模态窗口 -->
+    <div id="serverDetailModal" class="modal" data-server-id="">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeServerDetailModal()">&times;</span>
+            <div class="server-detail-header">
+                <h2 id="detailServerName"></h2>
+                <p id="detailServerDescription"></p>
+            </div>
+            <div id="serverDetailActions" class="server-detail-actions">
+                <!-- 按钮将通过JavaScript动态加载 -->
+            </div>
+            <div class="server-detail-content">
+                <div class="sidebar-tabs">
+                    <button class="tab-button active" data-tab="members">成员</button>
+                    <button class="tab-button" data-tab="requests">加入申请</button>
+                </div>
+                <div class="sidebar-content">
+                    <div class="members-container active" data-tab-content="members">
+                        <div id="memberListContainer">
+                            <!-- 成员列表将通过JavaScript动态加载 -->
+                            <div class="loading">加载中...</div>
+                        </div>
+                    </div>
+                    <div class="join-requests-container" data-tab-content="requests">
+                        <div id="joinRequestContainer">
+                            <!-- 加入申请列表将通过JavaScript动态加载 -->
+                            <div class="loading">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/js/servers.js"></script>
+</body>
+
+</html>

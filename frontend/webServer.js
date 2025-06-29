@@ -2,7 +2,7 @@
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-31 09:54:18
  * @LastEditors: FlowerRealm admin@flowerrealm.top
- * @LastEditTime: 2025-06-07 10:46:36
+ * @LastEditTime: 2025-06-28 10:13:22
  * @FilePath: /GameConnecting/frontend/webServer.js
  */
 import express from 'express';
@@ -14,19 +14,11 @@ import dotenv from 'dotenv';
 const env = process.env.NODE_ENV || 'development';
 dotenv.config({ path: `.env.${env}` });
 
-// 打印环境信息
-console.log('Server Environment:', {
-    NODE_ENV: process.env.NODE_ENV,
-    PORT: process.env.PORT,
-    BACKEND_URL: process.env.BACKEND_URL,
-    SOCKET_URL: process.env.SOCKET_URL
-});
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 12000;
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
@@ -62,24 +54,43 @@ app.get('/servers', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'pages', 'servers.html'));
 });
 
+app.get('/profile', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'profile.html'));
+});
+
+app.get('/forgot-password', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'forgot-password.html'));
+});
+
 // 将 /friends 路由更改为 /users 以提供用户列表页面
 // 该页面 (friends.html) 的内容和JS (friends.js) 已被修改为显示用户列表
 app.get('/users', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'pages', 'friends.html'));
 });
 
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'pages', 'admin.html'));
+// 管理员页面路由
+app.get('/administrator/user', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'administrator', 'user.html'));
+});
+
+app.get('/administrator/server', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'administrator', 'server.html'));
+});
+
+// 用户页面路由
+app.get('/user/server', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'user', 'server.html'));
+});
+
+app.get('/user/user', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'user', 'user.html'));
 });
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
-    console.error(err.stack);
     res.status(500).send('Something broke!');
 });
 
 // 启动服务器
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Frontend server running in ${process.env.NODE_ENV} mode on port ${port}`);
-    console.log(`前端服务器运行在: http://0.0.0.0:${port}`);
+app.listen(port, 'localhost', () => {
 });

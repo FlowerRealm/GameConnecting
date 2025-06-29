@@ -73,9 +73,6 @@ export async function getOrganizationById(orgId) {
  * @returns {Promise<object>} Result object.
  */
 export async function createOrganization(orgData, creatorId) {
-    console.log('[createOrganization] Input orgData:', JSON.stringify(orgData, null, 2));
-    console.log('[createOrganization] Input creatorId:', creatorId);
-
     const { name, description, is_publicly_listable = true } = orgData;
     const orgInsertPayload = {
         name,
@@ -83,59 +80,41 @@ export async function createOrganization(orgData, creatorId) {
         is_publicly_listable,
         created_by: creatorId
     };
-    console.log('[createOrganization] Payload for organizations insert:', JSON.stringify(orgInsertPayload, null, 2));
 
     try {
         const { data: newOrganization, error } = await supabaseAdmin
             .from('organizations')
-            .insert([orgInsertPayload]) // Correct: pass only the array with the payload object
+            .insert([orgInsertPayload])
             .select()
             .single();
 
-        console.log('[createOrganization] Response from organizations insert - Error:', JSON.stringify(error, null, 2));
-        console.log('[createOrganization] Response from organizations insert - Data (newOrganization):', JSON.stringify(newOrganization, null, 2));
-
         if (error) {
-            console.error('[createOrganization] Error during organizations insert, throwing now.');
             throw error;
         }
 
         if (!newOrganization) {
-            // This case means newOrganization was null/undefined even if no explicit 'error' was thrown by Supabase client
-            console.error('[createOrganization] Organization insert seemed to succeed but no data (newOrganization) was returned.');
             return { success: false, message: '创建组织失败：未能从数据库取回已创建的组织信息。', status: 500 };
         }
 
-        console.log(`[createOrganization] Organization ${newOrganization.id} created. Adding creator ${creatorId} as org_admin.`);
         const membershipPayload = {
             user_id: creatorId,
             organization_id: newOrganization.id,
             role_in_org: 'org_admin',
             status_in_org: 'approved'
         };
-        console.log('[createOrganization] Payload for user_organization_memberships insert:', JSON.stringify(membershipPayload, null, 2));
 
         const { error: memberError } = await supabaseAdmin
             .from('user_organization_memberships')
-            .insert(membershipPayload); // No .select().single() needed if we don't use the result of this insert
-
-        console.log('[createOrganization] Response from user_organization_memberships insert - memberError:', JSON.stringify(memberError, null, 2));
+            .insert(membershipPayload);
 
         if (memberError) {
             console.warn(`[createOrganization] Failed to add creator as admin to new org ${newOrganization.id}: ${memberError.message}. Organization was created, but admin membership failed.`);
-            // Still return success for org creation, but message could reflect partial success if desired.
-            // For now, keeping original behavior: org creation is success, membership is best-effort with warning.
         }
 
-        const finalReturnObject = { success: true, data: newOrganization, message: "Organization created successfully.", status: 201 };
-        console.log('[createOrganization] Returning final object:', JSON.stringify(finalReturnObject, null, 2));
-        return finalReturnObject;
+        return { success: true, data: newOrganization, message: "Organization created successfully.", status: 201 };
 
     } catch (error) {
-        console.error('[createOrganization] Caught error in service function:', error);
-        const finalErrorReturn = { success: false, message: error.message, status: (error.code === '23505' ? 409 : 500) };
-        console.log('[createOrganization] Returning error object from catch:', JSON.stringify(finalErrorReturn, null, 2));
-        return finalErrorReturn;
+        return { success: false, message: error.message, status: (error.code === '23505' ? 409 : 500) };
     }
 }
 

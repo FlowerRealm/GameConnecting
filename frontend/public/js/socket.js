@@ -29,9 +29,9 @@ class SocketManager {
         const socketUrl = config.socketUrl;
 
         const options = {
-            transports: ['websocket', 'polling'], // Prefer websocket
-            reconnection: false, // We handle reconnection manually
-            timeout: config.socket.connectionTimeout, // Connection timeout
+            transports: ['websocket', 'polling'],
+            reconnection: false,
+            timeout: 20000, // Hardcoded connection timeout (20 seconds)
             auth: { token }
         };
 
@@ -73,8 +73,8 @@ class SocketManager {
             return;
         }
 
-        if (this.reconnectAttempts < config.socket.maxRetryAttempts) {
-            const delay = Math.min(config.socket.reconnectionDelay * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff with max
+        if (this.reconnectAttempts < 5) { // Max 5 retry attempts
+            const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff with max 30 seconds
             this.reconnectTimer = setTimeout(() => {
                 this.reconnectAttempts++;
                 if (this.socket) { // Ensure socket object exists

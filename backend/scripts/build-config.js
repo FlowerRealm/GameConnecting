@@ -13,7 +13,6 @@ dotenv.config({ path: envPath });
 const requiredEnvVars = [
     'SUPABASE_URL',
     'SUPABASE_ANON_KEY',
-    // 'JWT_SECRET', // Removed as Supabase handles JWTs
     'API_KEY'
 ];
 
@@ -36,10 +35,6 @@ const config = {
         url: process.env.SUPABASE_URL,
         anonKey: process.env.SUPABASE_ANON_KEY
     },
-    // auth: { // Removed as Supabase handles JWTs
-    //     jwtSecret: process.env.JWT_SECRET,
-    //     tokenExpireTime: '24h'
-    // },
     socket: {
         pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT || '60000', 10),
         pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL || '25000', 10),

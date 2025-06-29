@@ -57,11 +57,11 @@
                 <textarea id="adminNote" placeholder="请输入审核意见，说明批准或拒绝的原因"></textarea>
             </div>
             <div class="modal-buttons">
-                <button type="button" class="modal-close" onclick="closeModal()">取消</button>
-                <button class="action-button reject-button" onclick="handleReview('rejected')">
+                <button type="button" class="modal-close" id="closeReviewModalBtn">取消</button>
+                <button class="action-button reject-button" id="rejectReviewBtn">
                     <i class="fas fa-times"></i> 拒绝申请
                 </button>
-                <button class="action-button approve-button" onclick="handleReview('approved')">
+                <button class="action-button approve-button" id="approveReviewBtn">
                     <i class="fas fa-check"></i> 批准申请
                 </button>
             </div>

@@ -1,4 +1,7 @@
-import { supabase } from '../supabaseClient.js';
+import { dbHelper } from '../utils/dbHelper.js';
+
+const roomsDb = dbHelper.query('rooms');
+const roomMembersDb = dbHelper.query('room_members');
 
 // Helper to get user ID from a request object (assuming authenticateToken middleware)
 // const getUserIdFromRequest = (req) => req.user.userId;
@@ -14,49 +17,37 @@ import { supabase } from '../supabaseClient.js';
  */
 async function createRoom(name, description, room_type = 'public', creatorId) {
     try {
-        // Step 1: Create the room
-        const { data: room, error: roomError } = await supabase
-            .from('rooms')
-            .insert({
-                name,
-                description,
-                room_type,
-                creator_id: creatorId,
-                last_active_at: new Date().toISOString(), // Set initial activity
-            })
-            .select()
-            .single();
+        // 创建房间
+        const roomResult = await roomsDb.create({
+            name,
+            description,
+            room_type,
+            creator_id: creatorId,
+            last_active_at: new Date().toISOString(),
+        });
 
-        if (roomError) {
-            console.error('Error creating room in service:', roomError);
-            return { success: false, error: { status: 500, message: roomError.message || 'Failed to create room.' } };
-        }
-        if (!room) {
-            return { success: false, error: { status: 500, message: 'Room creation did not return data.' } };
+        if (!roomResult.success) {
+            return dbHelper.error('创建房间失败');
         }
 
-        // Step 2: Add the creator as the owner in room_members
-        const { error: memberError } = await supabase
-            .from('room_members')
-            .insert({
-                room_id: room.id,
-                user_id: creatorId,
-                role: 'owner',
-                joined_at: new Date().toISOString(),
-                last_active: new Date().toISOString(),
-            });
+        // 添加创建者为房主
+        const memberResult = await roomMembersDb.create({
+            room_id: roomResult.data.id,
+            user_id: creatorId,
+            role: 'owner',
+            joined_at: new Date().toISOString(),
+            last_active: new Date().toISOString(),
+        });
 
-        if (memberError) {
-            console.error('Error adding creator to room_members in service:', memberError);
-            // Attempt to delete the created room if adding member fails (rollback)
-            await supabase.from('rooms').delete().eq('id', room.id);
-            return { success: false, error: { status: 500, message: memberError.message || 'Failed to add creator as room member.' } };
+        if (!memberResult.success) {
+            await roomsDb.delete({ id: roomResult.data.id });
+            return dbHelper.error('添加房间成员失败');
         }
 
-        return { success: true, data: room };
+        return dbHelper.success(roomResult.data);
     } catch (error) {
-        console.error('Unknown error in createRoom service:', error);
-        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred.' } };
+        console.error('Room creation error:', error);
+        return dbHelper.error('服务器错误');
     }
 }
 
@@ -74,11 +65,9 @@ async function kickMemberByAdmin(roomId, userIdToKick) {
     try {
         // First, check if the user to be kicked is the room owner.
         // Admins should not be able to kick the owner directly. Ownership transfer or room deletion are other processes.
-        const { data: room, error: roomFetchError } = await supabase
-            .from('rooms')
-            .select('creator_id')
-            .eq('id', roomId)
-            .single();
+        const { data: room, error: roomFetchError } = await roomsDb.findOne({
+            id: roomId
+        });
 
         if (roomFetchError) {
             console.error('Error fetching room details for kickMemberByAdmin:', roomFetchError);
@@ -92,11 +81,10 @@ async function kickMemberByAdmin(roomId, userIdToKick) {
         }
 
         // Proceed to delete the member from room_members
-        const { error: deleteError, count } = await supabase
-            .from('room_members')
-            .delete()
-            .eq('room_id', roomId)
-            .eq('user_id', userIdToKick);
+        const { error: deleteError, count } = await roomMembersDb.delete({
+            room_id: roomId,
+            user_id: userIdToKick
+        });
 
         if (deleteError) {
             console.error('Error kicking member by admin in service:', deleteError);
@@ -126,10 +114,7 @@ async function deleteServerByAdmin(roomId) {
 
     try {
         // No need to check creator_id for admin deletion. Admin can delete any room.
-        const { error, count } = await supabase
-            .from('rooms')
-            .delete()
-            .eq('id', roomId);
+        const { error, count } = await roomsDb.delete({ id: roomId });
 
         if (error) {
             console.error('Error deleting server by admin in service:', error);
@@ -187,16 +172,14 @@ async function updateServerByAdmin(roomId, updates) {
         return { success: false, error: { status: 400, message: 'No valid fields provided for update or only disallowed fields were sent.' } };
     }
     if (Object.keys(validUpdates).length === 0 && !hasInvalidField) {
-         return { success: false, error: { status: 400, message: 'No fields to update were provided after validation (e.g. empty name).' } };
+        return { success: false, error: { status: 400, message: 'No fields to update were provided after validation (e.g. empty name).' } };
     }
 
 
     validUpdates.updated_at = new Date().toISOString(); // Ensure updated_at is set
 
     try {
-        const { data: updatedRoom, error } = await supabase
-            .from('rooms')
-            .update(validUpdates)
+        const { data: updatedRoom, error } = await roomsDb.update(validUpdates)
             .eq('id', roomId)
             .select()
             .single();
@@ -224,22 +207,20 @@ async function updateServerByAdmin(roomId, updates) {
  * @returns {Promise<object>} Result object with success status, data, or error.
  */
 async function listPublicRooms() {
-    try {
-        const { data: rooms, error } = await supabase
-            .from('rooms')
-            .select('*')
-            .eq('room_type', 'public')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Error listing public rooms in service:', error);
-            return { success: false, error: { status: 500, message: error.message || 'Failed to list public rooms.' } };
+    return await roomsDb.find(
+        { room_type: 'public' },
+        {
+            select: `
+                *,
+                creator:creator_id(username),
+                members:room_members(count)
+            `,
+            orderBy: {
+                field: 'last_active_at',
+                ascending: false
+            }
         }
-        return { success: true, data: rooms || [] };
-    } catch (error) {
-        console.error('Unknown error in listPublicRooms service:', error);
-        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred.' } };
-    }
+    );
 }
 
 /**
@@ -251,67 +232,26 @@ async function listPublicRooms() {
  */
 async function joinRoom(roomId, userId) {
     try {
-        // Step 1: Get room details to check if it's public or private
-        const { data: room, error: roomError } = await supabase
-            .from('rooms')
-            .select('id, room_type, creator_id')
-            .eq('id', roomId)
-            .single();
+        // 检查是否已是成员
+        const existingMember = await roomMembersDb.findOne({
+            room_id: roomId,
+            user_id: userId
+        });
 
-        if (roomError || !room) {
-            return { success: false, error: { status: 404, message: 'Room not found.' } };
+        if (existingMember.success) {
+            return dbHelper.error('已经是房间成员', 400);
         }
 
-        // Prevent owner from re-joining (they are already in via creation)
-        if (room.creator_id === userId) {
-             // Or check if already a member
-            const { data: existingMember, error: memberCheckError } = await supabase
-                .from('room_members')
-                .select('id')
-                .eq('room_id', roomId)
-                .eq('user_id', userId)
-                .maybeSingle();
-            if (memberCheckError && memberCheckError.code !== 'PGRST116') { // PGRST116 means no rows, which is fine
-                console.error('Error checking existing member:', memberCheckError);
-            }
-            if (existingMember) {
-                 return { success: false, error: { status: 400, message: 'You are already a member of this room.' } };
-            }
-        }
-
-
-        // For now, only public rooms are directly joinable as per simplified requirement
-        if (room.room_type === 'private') {
-            // Future: Implement join request logic for private rooms
-            // For now, let's treat it as "cannot join directly"
-            return { success: false, error: { status: 403, message: 'This is a private room. Join requests are not yet implemented.' } };
-        }
-
-        // Step 2: Add user to room_members for public rooms
-        const { data: newMember, error: insertError } = await supabase
-            .from('room_members')
-            .insert({
-                room_id: roomId,
-                user_id: userId,
-                role: 'member', // Default role for joining
-                joined_at: new Date().toISOString(),
-                last_active: new Date().toISOString(),
-            })
-            .select()
-            .single();
-
-        if (insertError) {
-            if (insertError.code === '23505') { // Unique constraint violation (already a member)
-                return { success: false, error: { status: 400, message: 'You are already a member of this room.' } };
-            }
-            console.error('Error joining room in service:', insertError);
-            return { success: false, error: { status: 500, message: insertError.message || 'Failed to join room.' } };
-        }
-
-        return { success: true, data: newMember };
+        // 加入房间
+        return await roomMembersDb.create({
+            room_id: roomId,
+            user_id: userId,
+            role: 'member',
+            joined_at: new Date().toISOString(),
+            last_active: new Date().toISOString(),
+        });
     } catch (error) {
-        console.error('Unknown error in joinRoom service:', error);
-        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred.' } };
+        return dbHelper.error('服务器错误');
     }
 }
 
@@ -323,38 +263,23 @@ async function joinRoom(roomId, userId) {
  */
 async function leaveRoom(roomId, userId) {
     try {
-        // Prevent owner from leaving directly, they should delete the room or transfer ownership (not implemented)
-        const { data: room, error: roomError } = await supabase
-            .from('rooms')
-            .select('creator_id')
-            .eq('id', roomId)
-            .single();
+        // 检查是否是房主
+        const room = await roomsDb.findOne({
+            id: roomId,
+            creator_id: userId
+        });
 
-        if (roomError || !room) {
-            return { success: false, error: { status: 404, message: 'Room not found.' } };
-        }
-        if (room.creator_id === userId) {
-            return { success: false, error: { status: 400, message: 'Room creator cannot leave the room. Please delete the room instead or transfer ownership (not implemented).' } };
+        if (room.success) {
+            return dbHelper.error('房主不能离开房间', 400);
         }
 
-        const { error: deleteError, count } = await supabase
-            .from('room_members')
-            .delete()
-            .eq('room_id', roomId)
-            .eq('user_id', userId);
-
-        if (deleteError) {
-            console.error('Error leaving room in service:', deleteError);
-            return { success: false, error: { status: 500, message: deleteError.message || 'Failed to leave room.' } };
-        }
-        if (count === 0) {
-            return { success: false, error: { status: 404, message: 'You are not a member of this room or room does not exist.'}};
-        }
-
-        return { success: true, message: 'Successfully left the room.' };
+        // 离开房间
+        return await roomMembersDb.delete({
+            room_id: roomId,
+            user_id: userId
+        });
     } catch (error) {
-        console.error('Unknown error in leaveRoom service:', error);
-        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred.' } };
+        return dbHelper.error('服务器错误');
     }
 }
 
@@ -364,35 +289,19 @@ async function leaveRoom(roomId, userId) {
  * @returns {Promise<object>} Result object with success status, data, or error.
  */
 async function getRoomMembers(roomId) {
-    try {
-        const { data: members, error } = await supabase
-            .from('room_members')
-            .select(`
-                user_id,
-                role,
-                joined_at,
-                user_profiles ( username, status )
-            `)
-            .eq('room_id', roomId);
-
-        if (error) {
-            console.error('Error getting room members in service:', error);
-            return { success: false, error: { status: 500, message: error.message || 'Failed to get room members.' } };
+    return await roomMembersDb.find(
+        { room_id: roomId },
+        {
+            select: `
+                *,
+                user:user_id(username, status)
+            `,
+            orderBy: {
+                field: 'joined_at',
+                ascending: true
+            }
         }
-
-        const formattedMembers = members.map(m => ({
-            userId: m.user_id,
-            role: m.role,
-            joinedAt: m.joined_at,
-            username: m.user_profiles?.username,
-            status: m.user_profiles?.status,
-        }));
-
-        return { success: true, data: formattedMembers || [] };
-    } catch (error) {
-        console.error('Unknown error in getRoomMembers service:', error);
-        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred.' } };
-    }
+    );
 }
 
 /**
@@ -403,39 +312,23 @@ async function getRoomMembers(roomId) {
  */
 async function deleteRoom(roomId, userId) {
     try {
-        // Step 1: Verify the user is the creator of the room
-        const { data: room, error: roomError } = await supabase
-            .from('rooms')
-            .select('creator_id')
-            .eq('id', roomId)
-            .single();
+        // 检查房间和权限
+        const room = await roomsDb.findOne({
+            id: roomId
+        });
 
-        if (roomError || !room) {
-            return { success: false, error: { status: 404, message: 'Room not found.' } };
+        if (!room.success) {
+            return dbHelper.error('房间不存在', 404);
         }
 
-        if (room.creator_id !== userId) {
-            return { success: false, error: { status: 403, message: 'Only the room creator can delete the room.' } };
+        if (room.data.creator_id !== userId) {
+            return dbHelper.error('只有房主可以删除房间', 403);
         }
 
-        // Step 2: Delete the room. CASCADE should handle members and join requests.
-        const { error: deleteError, count } = await supabase
-            .from('rooms')
-            .delete()
-            .eq('id', roomId);
-
-        if (deleteError) {
-            console.error('Error deleting room in service:', deleteError);
-            return { success: false, error: { status: 500, message: deleteError.message || 'Failed to delete room.' } };
-        }
-        if (count === 0) { // Should not happen if previous check passed, but good for safety
-             return { success: false, error: { status: 404, message: 'Room not found for deletion (unexpected).' } };
-        }
-
-        return { success: true, message: 'Room deleted successfully.' };
+        // 删除房间
+        return await roomsDb.delete({ id: roomId });
     } catch (error) {
-        console.error('Unknown error in deleteRoom service:', error);
-        return { success: false, error: { status: 500, message: error.message || 'An unknown error occurred.' } };
+        return dbHelper.error('服务器错误');
     }
 }
 
@@ -468,19 +361,29 @@ async function getAllServersForAdmin(queryParams = {}) {
 
     try {
         // Fetch paginated rooms and total count
-        const { data: rooms, error, count } = await supabase
-            .from('rooms')
-            .select(`
-                id,
-                name,
-                description,
-                room_type,
-                created_at,
-                last_active_at,
-                creator_id
-            `, { count: 'exact' }) // Added count option
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1); // Added range for pagination
+        const { data: rooms, error, count } = await roomsDb.find(
+            { room_type: 'public' },
+            {
+                select: `
+                    id,
+                    name,
+                    description,
+                    room_type,
+                    created_at,
+                    last_active_at,
+                    creator_id
+                `,
+                orderBy: {
+                    field: 'created_at',
+                    ascending: false
+                },
+                range: {
+                    start: offset,
+                    end: offset + limit - 1
+                },
+                count: 'exact'
+            }
+        );
 
         if (error) {
             console.error('Error fetching all rooms for admin in service:', error);
@@ -500,57 +403,38 @@ async function getAllServersForAdmin(queryParams = {}) {
             };
         }
 
-        // Step 1: Collect all unique creator_ids from the paginated rooms to fetch their usernames
-        const creatorIds = [...new Set(rooms.map(room => room.creator_id).filter(id => id))];
-        let creatorUsernameMap = new Map();
-        if (creatorIds.length > 0) {
-            const { data: creatorProfiles, error: creatorsError } = await supabase
-                .from('user_profiles')
-                .select('id, username')
-                .in('id', creatorIds);
-            if (creatorsError) {
-                console.error('Failed to fetch creator profiles for admin server list:', creatorsError);
-            } else if (creatorProfiles) {
-                creatorProfiles.forEach(p => creatorUsernameMap.set(p.id, p.username));
-            }
-        }
-
-        // Step 2: Collect all room_ids to fetch member counts in one go
+        // Collect all room_ids and creator_ids
         const roomIds = rooms.map(room => room.id);
+        const creatorIds = [...new Set(rooms.map(room => room.creator_id).filter(Boolean))];
+
+        // Execute member count and creator username fetches in parallel
+        const [memberCountsResult, profilesResult] = await Promise.all([
+            roomIds.length > 0 ? dbHelper.rpc('get_room_member_counts', { room_ids: roomIds }) : Promise.resolve({ data: [], error: null }),
+            creatorIds.length > 0 ? dbHelper.rpc('get_users_with_details', { p_user_ids: creatorIds }) : Promise.resolve({ data: [], error: null })
+        ]);
+
         let memberCountMap = new Map();
-        if (roomIds.length > 0) {
-            // This query counts members per room_id.
-            // The .rpc call might be more direct if we have a function,
-            // but a direct query with group by is also possible.
-            // Supabase JS client doesn't directly support GROUP BY in a simple .select().
-            // We'll use a workaround: fetch all member rows for these rooms and count in JS,
-            // OR make a more complex query using .rpc if a helper PG function exists/is created.
-            // For now, let's do a slightly less optimized but better-than-N+1 approach:
-            // Fetch all room_members for the relevant rooms, then count in JS.
-            // This is one large query instead of N small ones.
-
-            // Alternative: Use an RPC or a view if this becomes a bottleneck.
-            // For now, let's stick to the Promise.all for member counts as it was, and optimize it here.
-            // The provided solution below is the optimized one.
-
-            const { data: memberCountsData, error: memberCountsError } = await supabase
-                .from('room_members')
-                .select('room_id, user_id') // Select user_id to count, or just room_id if counting rows
-                .in('room_id', roomIds);
-
-            if (memberCountsError) {
-                console.error('Failed to fetch member counts for admin server list:', memberCountsError);
-            } else if (memberCountsData) {
-                memberCountsData.forEach(member => {
-                    memberCountMap.set(member.room_id, (memberCountMap.get(member.room_id) || 0) + 1);
-                });
-            }
+        if (!memberCountsResult.error && memberCountsResult.data) {
+            memberCountsResult.data.forEach(item => {
+                memberCountMap.set(item.room_id, item.member_count);
+            });
+        } else if (memberCountsResult.error) {
+            console.error('Failed to fetch member counts for admin server list:', memberCountsResult.error);
         }
 
-        // Step 3: Augment rooms with creator username and member count
+        let creatorUsernames = new Map();
+        if (!profilesResult.error && profilesResult.data && profilesResult.data[0]) {
+            profilesResult.data[0].forEach(profile => {
+                creatorUsernames.set(profile.id, profile.username);
+            });
+        } else if (profilesResult.error) {
+            console.error('Failed to fetch creator profiles:', profilesResult.error);
+        }
+
+        // Step 4: Augment rooms with creator username and member count
         const augmentedRooms = rooms.map(room => ({
             ...room,
-            creatorUsername: room.creator_id ? (creatorUsernameMap.get(room.creator_id) || '未知用户') : '无创建者',
+            creatorUsername: creatorUsernames.get(room.creator_id) || '未知用户',
             member_count: memberCountMap.get(room.id) || 0,
         }));
 

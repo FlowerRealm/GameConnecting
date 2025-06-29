@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +8,23 @@
     <link rel="stylesheet" href="../styles/style.css">
     <link rel="stylesheet" href="../styles/components/navbar.css">
     <link rel="stylesheet" href="../styles/components/form.css">
-    <link rel="stylesheet" href="../styles/pages/profile.css"> <!-- Optional: Create this CSS file if specific styles are needed -->
+    <link rel="stylesheet" href="../styles/pages/profile.css">
+    <!-- Optional: Create this CSS file if specific styles are needed -->
 </head>
+
 <body>
-    <header class="navbar-container">
-        <!-- Navbar will be injected here by navbar.js -->
-    </header>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content-wrapper">
+            <a href="/" class="navbar-brand">GameConnecting</a>
+            <div class="navbar-menu" id="navMenu">
+                <!-- 导航菜单项将由JavaScript动态生成 -->
+            </div>
+            <div class="navbar-auth" id="authButtons">
+                <!-- 认证按钮将由JavaScript动态生成 -->
+            </div>
+        </div>
+    </nav>
 
     <main class="container">
         <h1>用户资料</h1>
@@ -54,4 +66,5 @@
     <script type="module" src="../js/navbar.js"></script>
     <script type="module" src="../js/profile.js"></script>
 </body>
+
 </html>

@@ -1,14 +1,13 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+
 import { supabase } from '../supabaseClient.js'; // Changed import
-import { updateUserPassword, getUserOrganizationMemberships, getActiveUsersList } from '../services/userService.js'; // Added getActiveUsersList
+import { updateUserPassword, getUserOrganizationMemberships, getActiveUsersList, getAllActiveUsers } from '../services/userService.js';
 
 const router = express.Router();
 
 // POST /me/password - Change current user's password
-router.post('/me/password', authenticateToken, async (req, res) => {
-    const { password: newPassword } = req.body;
-    const userId = req.user.id; // From authenticateToken middleware, ensure your middleware sets req.user.id
+router.post('/me/password', async (req, res) => {
+    const { password: newPassword, userId } = req.body;
 
     if (!newPassword || newPassword.length < 6) {
         return res.status(400).json({
@@ -34,9 +33,9 @@ router.post('/me/password', authenticateToken, async (req, res) => {
 });
 
 // GET /me/organizations - Fetch organizations for the current user
-router.get('/me/organizations', authenticateToken, async (req, res) => {
+router.get('/me/organizations', async (req, res) => {
     try {
-        const userId = req.user.id; // Extracted from token by authenticateToken middleware
+        const { userId } = req.body; // Extracted from token by authenticateToken middleware
         if (!userId) {
             // This case should ideally be handled by authenticateToken ensuring user is present
             return res.status(401).json({ success: false, message: '用户未认证或用户ID缺失。' });
@@ -60,48 +59,33 @@ router.get('/me/organizations', authenticateToken, async (req, res) => {
     }
 });
 
-router.get('/all', authenticateToken, async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const offset = (page - 1) * limit;
 
-        // Supabase query
-        const { data: users, error, count } = await supabase
-            .from('user_profiles') // Target user_profiles table
-            .select('id, username, role, created_at', { count: 'exact' }) // Select specified columns and get total count
-            .eq('status', 'active') // Filter by status 'active'
-            .order('username', { ascending: true }) // Order by username ascending
-            .range(offset, offset + limit - 1); // Apply pagination
+        const result = await getAllActiveUsers({ page, limit });
 
-        if (error) {
-            throw error; // Throw error to be caught by catch block
+        if (result.success) {
+            res.json({
+                success: true,
+                data: result.data
+            });
+        } else {
+            res.status(result.status || 500).json({ success: false, message: result.message });
         }
-
-        const totalPages = Math.ceil((count || 0) / limit);
-
-        res.json({
-            success: true,
-            data: {
-                users: users || [], // Ensure users is an array
-                total: count || 0,
-                page,
-                totalPages,
-                limit
-            }
-        });
     } catch (error) {
-        console.error('获取公共用户列表失败:', error); // Keep existing logging
+        console.error('获取公共用户列表失败:', error);
         res.status(500).json({
             success: false,
-            message: '获取用户列表失败', // Keep existing message
+            message: '获取用户列表失败',
             error: error.message
         });
     }
 });
 
 // GET /list - Fetch a simple list of active users (id and username)
-router.get('/list', authenticateToken, async (req, res) => {
+router.get('/list', async (req, res) => {
     try {
         // The new service function already filters by active status and selects specific fields
         const result = await getActiveUsersList();

@@ -126,3 +126,10 @@
     background: var(--border-color);
     border-radius: 3px;
 }
+
+/* 背景渐变工具类 */
+.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    background-attachment: fixed;
+}

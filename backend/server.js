@@ -2,100 +2,74 @@
  * @Author: FlowerRealm admin@flowerrealm.top
  * @Date: 2025-05-31 09:54:18
  * @LastEditors: FlowerRealm admin@flowerrealm.top
- * @LastEditTime: 2025-06-08 08:35:17
+ * @LastEditTime: 2025-06-29 19:05:27
  * @FilePath: /GameConnecting/backend/server.js
  */
 import express from 'express';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import { createServer } from 'http';
 import cors from 'cors';
+import compression from 'compression';
+import { Server } from 'socket.io';
+
+// 导入路由
 import authRouter from './src/api/auth.js';
 import roomsRouter from './src/api/rooms.js';
-import adminRouter from './src/api/admin.js'; // General admin routes
-import adminOrganizationsRouter from './src/api/adminOrganizations.js'; // Admin routes for organizations
-import organizationsRouter from './src/api/organizations.js'; // Public routes for organizations
+import adminRouter from './src/api/admin.js';
 import usersRouter from './src/api/users.js';
-import adminServersRouter from './src/api/adminServers.js'; // Added for admin server management
 import { initSocket } from './src/socket/index.js';
-import { getConfig, getServerConfig } from './src/config/index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
-const serverConfig = getServerConfig(); // Keep for other configs like apiKey, port
+const PORT = process.env.PORT || 12001;
 
-// Define allowed origins for CORS
+// 允许的CORS源
 const allowedOrigins = [
-  'https://game.flowerrealm.top', // Production frontend
-  'https://game-connecting-git-backend-refa-bf604e-flowercountrys-projects.vercel.app', // Vercel preview/branch URL for frontend
-  'http://localhost:12000',       // Local development for frontend
-  'http://127.0.0.1:12000',      // Local development alias for frontend
-  'https://game-connecting.vercel.app' // New URL added
+  'https://game.flowerrealm.top',
+  'http://localhost:12000',
+  'https://gameconnecting.vercel.app'
 ];
 
-// CORS options
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    // and requests from allowed origins
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+// CORS配置
+app.use(cors({
+  origin: (origin, callback) => !origin || allowedOrigins.includes(origin) ? callback(null, true) : callback(new Error('不允许的CORS来源')),
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'], // Explicitly list common methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID'] // Include necessary headers
-};
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-User-Id', 'X-Username', 'X-User-Role']
+}));
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-
-// Optional: Handle preflight requests across all routes,
-// though app.use(cors(corsOptions)) should generally cover this for subsequent routes.
-app.options('*', cors(corsOptions)); // Ensure preflight requests are explicitly handled
-
-const verifyApiKey = (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-    if (apiKey !== serverConfig.apiKey) {
-        return res.status(401).json({
-            success: false,
-            message: '无效的 API Key'
-        });
-    }
-    next();
-};
-
+// 中间件
+app.use(compression());
 app.use(express.json());
 
-// Apply API Key verification middleware (example, if needed for all routes or specific ones)
-// app.use('/api', verifyApiKey); // Example: protect all /api routes
-
+// API路由
 app.use('/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
-app.use('/admin', adminRouter); // Keep for existing general admin tasks if any
-app.use('/api/admin/organizations', adminOrganizationsRouter); // New route for admin org management
-app.use('/api/admin/servers', adminServersRouter); // Added for admin server management
-app.use('/api/organizations', organizationsRouter); // New public route for organizations
+app.use('/admin', adminRouter);
 app.use('/users', usersRouter);
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV
-    });
+// 错误处理中间件
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    success: false,
+    message: '服务器内部错误'
+  });
 });
 
+// 创建HTTP服务器
 const server = createServer(app);
-initSocket(server);
 
-const port = serverConfig.port;
-server.listen(port, '0.0.0.0', () => {
-    console.log('环境:', getConfig('env'));
-    console.log('Allowed CORS origins:', allowedOrigins);
-    console.log(`后端服务器运行在: http://0.0.0.0:${port}`);
+// 初始化Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-User-Id', 'X-Username', 'X-User-Role']
+  }
 });
+
+// 设置Socket处理
+initSocket(io);
+
+// 启动服务器
+server.listen(PORT, () => console.log(`服务器运行在端口 ${PORT}`));

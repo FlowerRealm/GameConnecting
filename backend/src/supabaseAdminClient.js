@@ -7,7 +7,8 @@ import { fileURLToPath } from 'url';
 // Adjust path as necessary if this client is used in different script locations.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const envPath = path.resolve(__dirname, '../.env.development'); // Assumes .env is in backend/
+const env = process.env.NODE_ENV || 'development';
+const envPath = path.resolve(__dirname, `../.env.${env}`);
 dotenv.config({ path: envPath });
 
 const supabaseUrl = process.env.SUPABASE_URL;

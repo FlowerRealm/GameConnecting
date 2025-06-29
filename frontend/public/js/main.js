@@ -1,6 +1,5 @@
 import { AuthManager } from './auth.js';
 import { initNavbar } from './navbar.js';
-import { socketManager } from './socket.js'; // Import centralized socket manager
 
 const auth = AuthManager.getInstance();
 

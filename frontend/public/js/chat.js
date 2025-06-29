@@ -3,11 +3,9 @@ export class ChatManager {
     #chatBox;
     #messageInput;
     #sendButton;
-    #memberList;
     #currentServer;
     #messageTemplate;
     #memberTemplate;
-    #memberRequestSidebar;
     #messageHandler;
     #memberJoinedHandler;
     #memberLeftHandler;
@@ -18,7 +16,6 @@ export class ChatManager {
         this.#chatBox = document.getElementById('chatBox');
         this.#messageInput = document.getElementById('messageInput');
         this.#sendButton = document.getElementById('sendButton');
-        this.#memberRequestSidebar = document.getElementById('memberRequestSidebar');
         this.#currentServer = null;
         this.#messageTemplate = document.getElementById('messageTemplate');
         this.#memberTemplate = document.getElementById('memberTemplate');

@@ -5,20 +5,29 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0);
     z-index: 1000;
-    backdrop-filter: blur(4px);
 }
 
 .modal-content {
     position: relative;
-    /* 视觉样式 (背景, 毛玻璃, 边框, 圆角, 阴影) */
-    /* 现在完全期望由 style.css 中的 .glassmorphic-container 类提供 */
-    /* 例如: background, backdrop-filter, border, border-radius, box-shadow */
     width: 90%;
     max-width: 600px;
     margin: 10vh auto;
     padding: 2rem;
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .modal-content h2 {

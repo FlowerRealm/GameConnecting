@@ -1,142 +1,167 @@
-import { supabaseAdmin } from '../supabaseAdminClient.js'; // Ensure this path and export are correct
+import { dbHelper } from '../utils/dbHelper.js';
+import bcrypt from 'bcryptjs';
+
+const userDb = dbHelper.query('user_profiles');
 
 /**
- * Updates a user's password using their ID.
- * Requires admin privileges (service role key for Supabase client).
- * @param {string} userId - The UUID of the user.
- * @param {string} newPassword - The new password for the user.
- * @returns {Promise<{success: boolean, message?: string, status?: number}>}
+ * 获取用户列表
  */
-export async function updateUserPassword(userId, newPassword) {
-    if (!userId || !newPassword) {
-        return { success: false, message: 'User ID and new password are required.', status: 400 };
-    }
-    // Password length validation should ideally be consistent with Supabase policies.
-    // This client-side check is a good first step.
-    if (newPassword.length < 6) {
-        return { success: false, message: 'Password must be at least 6 characters long.', status: 400 };
-    }
+async function getUserList(queryParams = {}) {
+  const { page = 1, limit = 10, status, search } = queryParams;
+  const offset = (page - 1) * limit;
 
-    try {
-        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
-            userId,
-            { password: newPassword }
-        );
+  let conditions = {};
+  if (status) conditions.status = status;
 
-        if (error) {
-            console.error('Supabase admin updateUserById error:', error);
-            // Check for specific common errors if needed, e.g., user not found, weak password.
-            // For Supabase, error.message often contains useful info, but might not always be suitable for client.
-            // error.status might also be available.
-            let clientMessage = 'Failed to update password.';
-            // Example: if (error.message.includes('User not found')) clientMessage = 'User not found.';
-            // else if (error.message.includes('weak password')) clientMessage = 'New password is too weak.';
+  let options = {
+    select: 'id, username, email, role, status, created_at, last_login',
+    orderBy: { field: 'created_at', ascending: false },
+    limit,
+    offset
+  };
 
-            // For now, appending Supabase's error message might give more context during development/debugging
-            // but consider if this is too much info for production clients.
-            clientMessage += ' Supabase: ' + error.message;
-
-            return { success: false, message: clientMessage, status: error.status || 500 };
-        }
-
-        // According to Supabase docs, data should contain the updated user object.
-        // If no error, the operation was successful.
-        return { success: true, message: 'Password updated successfully.' };
-
-    } catch (error) {
-        console.error('Unexpected error in updateUserPassword service:', error);
-        return { success: false, message: 'An unexpected error occurred while updating the password.', status: 500 };
-    }
-}
-
-/**
- * Placeholder function to fetch organization memberships for a user.
- * @param {string} userId - The UUID of the user.
- * @returns {Promise<Array>} - A promise that resolves to an array of organization memberships.
- */
-export async function getUserOrganizationMemberships(userId) {
-  if (!userId) {
-    console.error('getUserOrganizationMemberships: userId is required.');
-    // Consistently return an error object or throw, based on service patterns.
-    // For now, throwing, as the API layer will catch it.
-    throw new Error('User ID is required to fetch organization memberships.');
+  if (search) {
+    options.search = { field: 'username', value: search };
   }
 
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('user_organization_memberships') // Assuming this is the correct table name
-      .select(`
-        role_in_org,
-        status_in_org,
-        organizations (
-          id,
-          name,
-          description
-        )
-      `)
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Supabase error in getUserOrganizationMemberships:', error);
-      throw error; // Re-throw the error to be caught by the calling API route
-    }
-
-    if (!data) {
-      return []; // Should not happen if no error, but good practice
-    }
-
-    // Transform the data to match the desired output structure
-    return data.map(item => {
-      if (!item.organizations) {
-        // This case might happen if a membership record exists but the related organization is missing
-        // or if the join did not populate organizations (e.g. due to RLS on organizations for the admin role if not set up correctly)
-        // For now, log and skip or return partial data.
-        console.warn(`Membership data for user ${userId} is missing related organization details for a record. Membership ID might be relevant if available.`);
-        return null; // Or some other placeholder for malformed data
-      }
-      return {
-        org_id: item.organizations.id,
-        org_name: item.organizations.name,
-        org_description: item.organizations.description,
-        role_in_org: item.role_in_org,
-        status_in_org: item.status_in_org,
-      };
-    }).filter(item => item !== null); // Filter out any nulls from malformed records
-
-  } catch (error) {
-    // Catch any unexpected errors during the process
-    console.error('Unexpected error in getUserOrganizationMemberships:', error);
-    // Re-throw to allow the API layer to handle the HTTP response
-    // Or, return a structured error object if that's the service pattern:
-    // return { success: false, message: 'Failed to fetch organization memberships.', error: error };
-    throw error;
-  }
+  return await userDb.find(conditions, options);
 }
 
 /**
- * Fetches a list of active users.
- * Returns only id and username, ordered by username.
- * @returns {Promise<{success: boolean, data?: Array, message?: string, status?: number}>}
+ * 获取用户详情
  */
-export async function getActiveUsersList() {
-    try {
-        const { data, error } = await supabaseAdmin
-            .from('user_profiles')
-            .select('id, username') // Fetch only id and username
-            .eq('status', 'active') // Filter by active status
-            .order('username', { ascending: true }); // Order by username
-
-        if (error) {
-            console.error('Supabase error in getActiveUsersList:', error);
-            // It's better to throw the error or return a structured error response
-            // rather than just the error object, to be handled by the API layer.
-            return { success: false, message: 'Failed to fetch active users: ' + error.message, status: error.status || 500 };
-        }
-
-        return { success: true, data: data || [] }; // Ensure data is an array, even if null
-
-    } catch (error) {
-        console.error('Unexpected error in getActiveUsersList service:', error);
-        return { success: false, message: 'An unexpected error occurred while fetching active users.', status: 500 };
-    }
+async function getUserById(userId) {
+  return await userDb.findOne({ id: userId });
 }
+
+/**
+ * 创建用户
+ */
+async function createUser(userData) {
+  const { username, email, password } = userData;
+
+  // 检查用户名是否已存在
+  const existingUser = await userDb.findOne({ username });
+  if (existingUser.success) {
+    return { success: false, error: { message: '用户名已存在' } };
+  }
+
+  // 检查邮箱是否已存在
+  const existingEmail = await userDb.findOne({ email });
+  if (existingEmail.success) {
+    return { success: false, error: { message: '邮箱已被使用' } };
+  }
+
+  // 哈希密码
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  // 创建用户
+  return await userDb.create({
+    username,
+    email,
+    password: hashedPassword,
+    role: 'user',
+    status: 'pending',
+    created_at: new Date().toISOString()
+  });
+}
+
+/**
+ * 更新用户状态
+ */
+async function updateUserStatus(userId, status) {
+  if (!['pending', 'approved', 'rejected', 'active', 'suspended', 'banned'].includes(status)) {
+    return { success: false, error: { message: '无效的用户状态' } };
+  }
+
+  return await userDb.update({ id: userId }, {
+    status,
+    updated_at: new Date().toISOString()
+  });
+}
+
+/**
+ * 更新用户角色
+ */
+async function updateUserRole(userId, role) {
+  if (!['user', 'admin'].includes(role)) {
+    return { success: false, error: { message: '无效的用户角色' } };
+  }
+
+  return await userDb.update({ id: userId }, {
+    role,
+    updated_at: new Date().toISOString()
+  });
+}
+
+/**
+ * 更新用户密码
+ */
+async function updateUserPassword(userId, password) {
+  // 哈希密码
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  return await userDb.update({ id: userId }, {
+    password: hashedPassword,
+    updated_at: new Date().toISOString()
+  });
+}
+
+/**
+ * 删除用户
+ */
+async function deleteUser(userId) {
+  return await userDb.delete({ id: userId });
+}
+
+/**
+ * 验证用户登录
+ */
+async function verifyLogin(username, password) {
+  const userResult = await userDb.findOne({ username });
+
+  if (!userResult.success) {
+    return { success: false, error: { message: '用户名或密码错误' } };
+  }
+
+  const user = userResult.data;
+
+  // 检查密码
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return { success: false, error: { message: '用户名或密码错误' } };
+  }
+
+  // 检查用户状态
+  if (user.status !== 'active') {
+    return { success: false, error: { message: '账号未激活或已被禁用' } };
+  }
+
+  // 更新最后登录时间
+  await userDb.update({ id: user.id }, {
+    last_login: new Date().toISOString()
+  });
+
+  return {
+    success: true,
+    data: {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      email: user.email
+    }
+  };
+}
+
+export {
+  getUserList,
+  getUserById,
+  createUser,
+  updateUserStatus,
+  updateUserRole,
+  updateUserPassword,
+  deleteUser,
+  verifyLogin
+};

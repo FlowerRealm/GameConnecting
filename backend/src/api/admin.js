@@ -1,17 +1,24 @@
 import express from 'express';
-import { authenticateToken, isAdmin } from '../middleware/auth.js';
+
 import { supabase } from '../supabaseClient.js'; // Standard Supabase client
 import { supabaseAdmin } from '../supabaseAdminClient.js'; // Admin client with SERVICE_ROLE_KEY
 import { getIoInstance } from '../socket/index.js';
+import { setCache, getCache, deleteCache } from '../utils/cache.js';
 
 const router = express.Router();
 
 // GET /users - List all users with pagination
-router.get('/users', authenticateToken, isAdmin, async (req, res) => {
+router.get('/users', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
+        const cacheKey = `users_page_${page}_limit_${limit}`;
+
+        const cachedData = getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, data: cachedData });
+        }
 
         const { data: users, error, count } = await supabase
             .from('user_profiles')
@@ -31,40 +38,46 @@ router.get('/users', authenticateToken, isAdmin, async (req, res) => {
 
         if (error) throw error;
 
-        let augmentedUsers = users || [];
-        if (augmentedUsers.length > 0) {
-            const approverIds = [...new Set(augmentedUsers.map(u => u.approved_by).filter(id => id))];
+        // Collect all unique approved_by IDs
+        const approvedByIds = [...new Set(users.map(user => user.approved_by).filter(Boolean))];
+        let approverUsernames = new Map();
 
-            if (approverIds.length > 0) {
-                const { data: approverProfiles, error: approversError } = await supabase
-                    .from('user_profiles')
-                    .select('id, username')
-                    .in('id', approverIds);
+        if (approvedByIds.length > 0) {
+            const { data: approvers, error: approversError } = await supabase
+                .from('user_profiles')
+                .select('id, username')
+                .in('id', approvedByIds);
 
-                if (approversError) {
-                    console.error('Failed to fetch approver profiles:', approversError);
-                    // Decide if this is a fatal error or if we can proceed without approver usernames
-                } else if (approverProfiles) {
-                    const approverMap = new Map(approverProfiles.map(p => [p.id, p.username]));
-                    augmentedUsers = augmentedUsers.map(u => ({
-                        ...u,
-                        approvedByUsername: u.approved_by ? (approverMap.get(u.approved_by) || '未知用户') : null
-                    }));
-                }
+            if (approversError) {
+                console.error('Error fetching approver usernames:', approversError);
+            } else if (approvers) {
+                approvers.forEach(approver => {
+                    approverUsernames.set(approver.id, approver.username);
+                });
             }
         }
 
+        // Augment users with approver usernames
+        const augmentedUsers = users.map(user => ({
+            ...user,
+            approvedByUsername: approverUsernames.get(user.approved_by) || null
+        }));
+
         const totalPages = Math.ceil((count || 0) / limit);
+
+        const responseData = {
+            users: augmentedUsers,
+            total: count || 0,
+            page,
+            totalPages,
+            limit
+        };
+
+        setCache(cacheKey, responseData, 30000); // Cache for 30 seconds
 
         res.json({
             success: true,
-            data: {
-                users: augmentedUsers,
-                total: count || 0,
-                page,
-                totalPages,
-                limit
-            }
+            data: responseData
         });
     } catch (error) {
         console.error('获取用户列表失败:', error);
@@ -72,19 +85,24 @@ router.get('/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// PUT /users/:id/status - Update user status
-router.put('/users/:id/status', authenticateToken, isAdmin, async (req, res) => {
+// PUT /users/:id - Update user status or role
+router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body; // Expecting 'active', 'pending', 'suspended', 'banned'
+    const { status, role } = req.body;
 
-    if (!status) {
-        return res.status(400).json({ success: false, message: '状态不能为空' });
+    if (!status && !role) {
+        return res.status(400).json({ success: false, message: '需要提供状态或角色' });
     }
+
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (role) updateData.role = role;
+    updateData.updated_at = new Date().toISOString();
 
     try {
         const { data: updatedUser, error } = await supabase
             .from('user_profiles')
-            .update({ status, updated_at: new Date().toISOString() })
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();
@@ -97,80 +115,37 @@ router.put('/users/:id/status', authenticateToken, isAdmin, async (req, res) => 
         }
         if (!updatedUser) return res.status(404).json({ success: false, message: '用户不存在或更新失败' });
 
+        // Invalidate user list cache
+        deleteCache('users_page_'); // Clear all user list caches
 
-        res.json({ success: true, message: '用户状态更新成功', data: updatedUser });
+        res.json({ success: true, message: '用户更新成功', data: updatedUser });
     } catch (error) {
-        console.error('更新用户状态失败:', error);
-        res.status(500).json({ success: false, message: '更新用户状态失败', error: error.message });
-    }
-});
-
-// PUT /users/:id/role - Update user role
-router.put('/users/:id/role', authenticateToken, isAdmin, async (req, res) => {
-    const { id } = req.params;
-    const { role } = req.body; // Expecting 'user', 'moderator', 'admin'
-
-    if (!role) {
-        return res.status(400).json({ success: false, message: '角色不能为空' });
-    }
-
-    try {
-        const { data: updatedUser, error } = await supabase
-            .from('user_profiles')
-            .update({ role, updated_at: new Date().toISOString() })
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) {
-            if (error.code === 'PGRST116') {
-                return res.status(404).json({ success: false, message: '用户不存在' });
-            }
-            throw error;
-        }
-        if (!updatedUser) return res.status(404).json({ success: false, message: '用户不存在或更新失败' });
-
-        res.json({ success: true, message: '用户角色更新成功', data: updatedUser });
-    } catch (error) {
-        console.error('更新用户角色失败:', error);
-        res.status(500).json({ success: false, message: '更新用户角色失败', error: error.message });
+        console.error('更新用户失败:', error);
+        res.status(500).json({ success: false, message: '更新用户失败', error: error.message });
     }
 });
 
 // DELETE /users/:id - Delete a user
-router.delete('/users/:id', authenticateToken, isAdmin, async (req, res) => {
+router.delete('/users/:id', async (req, res) => {
     const userIdToDelete = req.params.id;
 
     try {
-        // IMPORTANT: supabase.auth.admin.deleteUser() requires SERVICE_ROLE_KEY.
-        // The shared supabase client in supabaseClient.js uses ANON_KEY.
-        // This call will likely fail if the client isn't elevated.
-        // For this subtask, we write it as if it will work.
-        // A dedicated admin client or temporary elevation would be needed in a real scenario.
-        // Using supabaseAdmin client which should be initialized with SERVICE_ROLE_KEY
-        const { data: deleteData, error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
+        // Use the admin client to delete the user from Supabase Auth.
+        // This requires the SERVICE_ROLE_KEY.
+        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
 
         if (deleteAuthError) {
-            // Handle cases like user not found in auth.users, or permission issues
             if (deleteAuthError.message.toLowerCase().includes('user not found')) {
                  return res.status(404).json({ success: false, message: 'Supabase Auth中用户不存在' });
             }
-            // Check for specific permission error if possible, though Supabase might return a generic one
-            // The supabaseAdmin client should have service role, so permission errors are less likely unless misconfigured.
-            if (deleteAuthError.message.toLowerCase().includes('request failed') || deleteAuthError.status === 401 || deleteAuthError.status === 403) {
-                console.error('Supabase Admin Delete User Error (SERVICE_ROLE_KEY might be missing/invalid or user has protections):', deleteAuthError);
-                return res.status(500).json({ success: false, message: '删除用户操作失败，请检查Service Role Key配置或用户保护设置' });
-            }
-            throw deleteAuthError;
+            console.error('Supabase Admin Delete User Error:', deleteAuthError);
+            return res.status(500).json({ success: false, message: '删除用户操作失败，请检查Service Role Key配置或用户保护设置' });
         }
 
-        // If auth.deleteUser is successful, the ON DELETE CASCADE on user_profiles.id
-        // (foreign key to auth.users.id) should handle deleting the user_profile row.
-        // If not, or if you need to ensure it, you could add:
-        // await supabase.from('user_profiles').delete().eq('id', userIdToDelete);
-        // But this should be automatic if DB schema is set up correctly.
+        // The ON DELETE CASCADE on user_profiles.id should handle deleting the user_profile row.
 
-        res.json({ success: true, message: '用户已成功删除 (Auth层面)' });
+        res.json({ success: true, message: '用户已成功删除' });
+        deleteCache('users_page_'); // Invalidate user list cache
     } catch (error) {
         console.error('删除用户失败:', error);
         res.status(500).json({ success: false, message: `删除用户失败: ${error.message}` });
@@ -178,17 +153,51 @@ router.delete('/users/:id', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // GET /servers - List all servers with owner info
-router.get('/servers', authenticateToken, isAdmin, async (req, res) => {
+router.get('/servers', async (req, res) => {
     try {
+        const cacheKey = 'servers_list';
+        const cachedData = getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, data: cachedData });
+        }
+
         const { data: servers, error } = await supabase
-            .from('servers')
+            .from('rooms')
             .select(`
                 *,
-                owner:user_profiles!servers_created_by_fkey (id, username)
+                creator_id
             `);
 
         if (error) throw error;
-        res.json({ success: true, data: servers || [] });
+
+        // Collect all unique creator_ids
+        const creatorIds = [...new Set(servers.map(server => server.creator_id).filter(Boolean))];
+        let creatorUsernames = new Map();
+
+        if (creatorIds.length > 0) {
+            const { data: creators, error: creatorsError } = await supabase
+                .from('user_profiles')
+                .select('id, username')
+                .in('id', creatorIds);
+
+            if (creatorsError) {
+                console.error('Error fetching creator usernames:', creatorsError);
+            } else if (creators) {
+                creators.forEach(creator => {
+                    creatorUsernames.set(creator.id, creator.username);
+                });
+            }
+        }
+
+        // Augment servers with creator usernames
+        const augmentedServers = servers.map(server => ({
+            ...server,
+            creatorUsername: creatorUsernames.get(server.creator_id) || null
+        }));
+
+        setCache(cacheKey, augmentedServers, 30000); // Cache for 30 seconds
+
+        res.json({ success: true, data: augmentedServers || [] });
     } catch (error) {
         console.error('获取服务器列表失败 (admin):', error);
         res.status(500).json({ success: false, message: '获取服务器列表失败', error: error.message });
@@ -196,7 +205,7 @@ router.get('/servers', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // GET /pending-users - List users with 'pending' status
-router.get('/pending-users', authenticateToken, isAdmin, async (req, res) => {
+router.get('/pending-users', async (req, res) => {
     try {
         const { data: users, error } = await supabase
             .from('user_profiles')
@@ -213,10 +222,9 @@ router.get('/pending-users', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // POST /review-user/:id - Approve or reject a user's registration
-router.post('/review-user/:id', authenticateToken, isAdmin, async (req, res) => {
+router.post('/review-user/:id', async (req, res) => {
     const targetUserId = req.params.id;
-    const { status, admin_note } = req.body; // status: 'active' (approved) or 'banned'/'suspended' (rejected variants)
-    const reviewerUserId = req.user.id; // Admin's ID from token
+    const { status, admin_note, reviewerUserId } = req.body; // status: 'active' (approved) or 'banned'/'suspended' (rejected variants)
 
     if (!status || !['active', 'suspended', 'banned'].includes(status)) {
         return res.status(400).json({ success: false, message: "无效的状态值。请使用 'active', 'suspended', 或 'banned'." });
@@ -251,14 +259,27 @@ router.post('/review-user/:id', authenticateToken, isAdmin, async (req, res) => 
             .from('user_profiles')
             .update(updatePayload)
             .eq('id', targetUserId)
-            .select('*, approvedByUser:user_profiles!user_profiles_approved_by_fkey(username)') // Re-fetch with approvedBy username
+            .select('*')
             .single();
 
         if (updateError) throw updateError;
         if (!updatedUser) return res.status(404).json({ success: false, message: '用户审核更新后未返回数据' });
 
-
         const io = getIoInstance();
+
+        let reviewerUsername = '未知用户';
+        const { data: reviewerProfile, error: reviewerError } = await supabase
+            .from('user_profiles')
+            .select('username')
+            .eq('id', reviewerUserId)
+            .single();
+
+        if (reviewerError) {
+            console.error('Error fetching reviewer username:', reviewerError);
+        } else if (reviewerProfile) {
+            reviewerUsername = reviewerProfile.username;
+        }
+
         // Emit an event to admin room or specific user if needed
         io.to('admin_room').emit('userStatusUpdated', {
             userId: updatedUser.id,
@@ -267,11 +288,12 @@ router.post('/review-user/:id', authenticateToken, isAdmin, async (req, res) => 
             note: updatedUser.note, // original user note
             adminNote: updatedUser.admin_note, // new admin note for this review
             approvedAt: updatedUser.approved_at,
-            approvedBy: updatedUser.approvedByUser ? { username: updatedUser.approvedByUser.username } : { username: '未知' },
+            approvedBy: { username: reviewerUsername },
             createdAt: updatedUser.created_at
         });
 
-        res.json({ success: true, message: '用户审核成功', data: updatedUser });
+        res.json({ success: true, message: '用户审核成功', data: { ...updatedUser, approvedByUsername: reviewerUsername } });
+        deleteCache('users_page_'); // Invalidate user list cache
     } catch (error) {
         console.error('审核用户失败:', error);
         res.status(500).json({ success: false, message: '审核用户失败', error: error.message });
