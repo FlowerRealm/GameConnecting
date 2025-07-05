@@ -123,45 +123,6 @@ export const up = async (pgm) => {
     FOR EACH ROW
     EXECUTE FUNCTION public.trigger_set_timestamp();
   `);
-
-  // Table: organizations
-  await pgm.sql(`
-    CREATE TABLE public.organizations (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name TEXT NOT NULL UNIQUE CHECK (char_length(name) >= 3 AND char_length(name) <= 100),
-      description TEXT CHECK (char_length(description) <= 1000),
-      created_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
-      is_publicly_listable BOOLEAN NOT NULL DEFAULT true,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `);
-  await pgm.sql(`
-    CREATE TRIGGER set_timestamp
-    BEFORE UPDATE ON public.organizations
-    FOR EACH ROW
-    EXECUTE FUNCTION public.trigger_set_timestamp();
-  `);
-
-  // Table: user_organization_memberships
-  await pgm.sql(`
-    CREATE TABLE public.user_organization_memberships (
-      id BIGSERIAL PRIMARY KEY,
-      user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
-      organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-      role_in_org TEXT NOT NULL DEFAULT 'member' CHECK (role_in_org IN ('member', 'org_admin')),
-      status_in_org TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status_in_org IN ('pending_approval', 'approved', 'invited', 'rejected', 'left', 'removed')),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      CONSTRAINT user_organization_unique UNIQUE (user_id, organization_id)
-    );
-  `);
-  await pgm.sql(`
-    CREATE TRIGGER set_timestamp
-    BEFORE UPDATE ON public.user_organization_memberships
-    FOR EACH ROW
-    EXECUTE FUNCTION public.trigger_set_timestamp();
-  `);
 };
 
 /**
@@ -171,12 +132,6 @@ export const up = async (pgm) => {
  */
 export const down = async (pgm) => {
   // Drop in reverse order of creation
-  await pgm.sql('DROP TRIGGER IF EXISTS set_timestamp ON public.user_organization_memberships;');
-  await pgm.sql('DROP TABLE IF EXISTS public.user_organization_memberships;');
-
-  await pgm.sql('DROP TRIGGER IF EXISTS set_timestamp ON public.organizations;');
-  await pgm.sql('DROP TABLE IF EXISTS public.organizations;');
-
   await pgm.sql('DROP TRIGGER IF EXISTS set_timestamp ON public.room_join_requests;');
   await pgm.sql('DROP TABLE IF EXISTS public.room_join_requests;');
 

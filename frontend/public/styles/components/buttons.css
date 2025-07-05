@@ -37,24 +37,38 @@
 
 .btn-primary,
 .primary-button,
-/* Added .primary-button to share styles with .btn-primary */
-.add-server-button,
-.review-button,
-.connect-button {
-    background: var(--primary-color);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.modal-button.primary {
+    background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.08);
+    font-weight: 600;
+    transition: background 0.2s, box-shadow 0.2s;
 }
 
 .btn-primary:hover,
 .primary-button:hover,
-/* Added .primary-button hover styles */
-.add-server-button:hover,
-.review-button:hover,
-.connect-button:hover {
-    background: var(--primary-hover);
-    border-color: rgba(255, 255, 255, 0.3);
+.modal-button.primary:hover {
+    background: linear-gradient(90deg, #45a049 0%, #388e3c 100%);
+    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.15);
+}
+
+.modal-button {
+    min-width: 100px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--primary-color);
+    background: #fff;
+    color: var(--primary-color);
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.modal-button:hover {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.10);
 }
 
 .btn-secondary,
@@ -121,6 +135,8 @@
 
 .btn-block {
     width: 100%;
+    display: block;
+    margin-top: 1.2rem;
 }
 
 .btn-link {

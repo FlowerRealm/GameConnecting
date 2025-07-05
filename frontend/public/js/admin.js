@@ -2,8 +2,6 @@ import { AuthManager } from './auth.js';
 import { apiService } from './apiService.js';
 import { initNavbar } from './navbar.js';
 import { renderUsers, closeModal, handleReview } from './userReview.js';
-import { renderPendingOrgMemberships } from './orgMembership.js';
-import { loadOrganizations, initOrgManagement } from './orgManagement.js';
 import { showNotification, renderPagination } from './utils.js';
 
 const auth = AuthManager.getInstance();
@@ -74,7 +72,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     initNavbar();
-    initOrgManagement();
 
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', () => {
@@ -106,24 +103,15 @@ async function loadData() {
         if (cachedData) {
             if (currentTab === 'pending' || currentTab === 'all') {
                 renderUsers(cachedData.data.data || cachedData.data, currentTab, limit);
-            } else if (currentTab === 'org-pending') {
-                renderPendingOrgMemberships(cachedData.data, renderPagination);
             }
             return;
         }
 
         let response;
         if (currentTab === 'pending') {
-            response = await apiService.request('/admin/pending-users');
+            response = await apiService.request(`/admin/users?status=pending&page=${currentPage}&limit=${limit}`);
         } else if (currentTab === 'all') {
-            response = await apiService.request(`/admin/users?page=${currentPage}&limit=${limit}`);
-        } else if (currentTab === 'org-pending') {
-            response = await apiService.request('/api/admin/organizations/pending-memberships', {
-                params: { page: currentPage, limit: limit }
-            });
-        } else if (currentTab === 'orgs') {
-            loadOrganizations();
-            return;
+            response = await apiService.request(`/admin/users?page=${currentPage}&limit=${limit}`); // 确保请求路径是 /admin/users
         } else {
             console.error('Unknown tab:', currentTab);
             showNotification('未知标签页', 'error');
@@ -136,8 +124,6 @@ async function loadData() {
 
             if (currentTab === 'pending' || currentTab === 'all') {
                 renderUsers(response.data.data || response.data, currentTab, limit);
-            } else if (currentTab === 'org-pending') {
-                renderPendingOrgMemberships(response.data, renderPagination);
             }
         } else if (response) {
             showNotification(response.message || `获取${currentTab}列表失败`, 'error');
@@ -147,6 +133,53 @@ async function loadData() {
     } catch (error) {
         console.error(`Error loading data for tab ${currentTab}:`, error);
         showNotification(`加载${currentTab}列表失败: ${error.message}`, 'error');
+    }
+}
+
+export async function updateUser(userId, status, role, password) {
+    try {
+        console.log('[updateUser] userId:', userId, 'status:', status, 'role:', role, 'password:', password);
+        if (status) {
+            const statusResult = await apiService.request(
+                `/admin/users/${userId}/status`,
+                { method: 'PUT', body: JSON.stringify({ status }) }
+            );
+            console.log('[updateUser] statusResult:', statusResult);
+            if (!statusResult.success) {
+                showNotification('用户状态更新失败', 'error');
+                return;
+            }
+        }
+
+        if (role) {
+            const roleResult = await apiService.request(
+                `/admin/users/${userId}/role`,
+                { method: 'PUT', body: JSON.stringify({ role }) }
+            );
+            console.log('[updateUser] roleResult:', roleResult);
+            if (!roleResult.success) {
+                showNotification('用户角色更新失败', 'error');
+                return;
+            }
+        }
+
+        if (password && password.length >= 6) {
+            const pwdResult = await apiService.request(
+                `/admin/users/${userId}/password`,
+                { method: 'PUT', body: JSON.stringify({ password }) }
+            );
+            console.log('[updateUser] pwdResult:', pwdResult);
+            if (!pwdResult.success) {
+                showNotification('密码重置失败', 'error');
+                return;
+            }
+        }
+
+        showNotification('用户信息更新成功', 'success');
+        loadData(); // 刷新用户列表
+    } catch (error) {
+        console.error('更新用户信息失败:', error);
+        showNotification('更新用户信息失败: ' + error.message, 'error');
     }
 }
 

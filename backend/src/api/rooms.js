@@ -7,7 +7,7 @@ import {
     leaveRoom,
     getRoomMembers,
     deleteRoom,
-} from '../services/roomService.js';
+} from '../services/userService.js';
 
 const router = express.Router();
 

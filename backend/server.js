@@ -14,8 +14,8 @@ import { Server } from 'socket.io';
 // 导入路由
 import authRouter from './src/api/auth.js';
 import roomsRouter from './src/api/rooms.js';
-import adminRouter from './src/api/admin.js';
 import usersRouter from './src/api/users.js';
+import adminRouter from './src/api/admin.js';
 import { initSocket } from './src/socket/index.js';
 
 const app = express();
@@ -43,8 +43,8 @@ app.use(express.json());
 // API路由
 app.use('/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
+app.use('/api/users', usersRouter);
 app.use('/admin', adminRouter);
-app.use('/users', usersRouter);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

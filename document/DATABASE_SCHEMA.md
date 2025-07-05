@@ -2,7 +2,7 @@
 
 ## 概述
 
-GameConnecting使用PostgreSQL数据库，通过Supabase进行管理。数据库设计采用关系型数据库模式，支持用户认证、房间管理、组织管理和实时通信功能。
+GameConnecting使用PostgreSQL数据库，通过Supabase进行管理。数据库设计采用关系型数据库模式，支持用户认证、房间管理和实时通信功能。
 
 ### 数据库信息
 - **数据库类型**: PostgreSQL 15+
@@ -110,71 +110,7 @@ CREATE INDEX idx_room_members_user_id ON room_members(user_id);
 CREATE INDEX idx_room_members_role ON room_members(role);
 ```
 
-### 4. 组织表 (organizations)
-
-存储组织信息。
-
-```sql
-CREATE TABLE organizations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    created_by UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
-    is_public BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-#### 字段说明
-- `id`: 组织唯一标识符
-- `name`: 组织名称
-- `description`: 组织描述
-- `created_by`: 创建者ID（外键）
-- `is_public`: 是否公开
-- `created_at`: 创建时间
-- `updated_at`: 更新时间
-
-#### 索引
-```sql
-CREATE INDEX idx_organizations_created_by ON organizations(created_by);
-CREATE INDEX idx_organizations_is_public ON organizations(is_public);
-```
-
-### 5. 用户组织关系表 (user_organization_memberships)
-
-存储用户与组织的关系。
-
-```sql
-CREATE TABLE user_organization_memberships (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    role_in_org VARCHAR(20) DEFAULT 'member' CHECK (role_in_org IN ('owner', 'admin', 'member')),
-    status_in_org VARCHAR(20) DEFAULT 'pending' CHECK (status_in_org IN ('pending', 'active', 'rejected', 'left')),
-    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, organization_id)
-);
-```
-
-#### 字段说明
-- `id`: 关系唯一标识符
-- `user_id`: 用户ID（外键）
-- `organization_id`: 组织ID（外键）
-- `role_in_org`: 组织内角色（owner/admin/member）
-- `status_in_org`: 组织内状态（pending/active/rejected/left）
-- `joined_at`: 加入时间
-- `updated_at`: 更新时间
-
-#### 索引
-```sql
-CREATE INDEX idx_user_org_memberships_user_id ON user_organization_memberships(user_id);
-CREATE INDEX idx_user_org_memberships_org_id ON user_organization_memberships(organization_id);
-CREATE INDEX idx_user_org_memberships_status ON user_organization_memberships(status_in_org);
-```
-
-### 6. 密码重置请求表 (password_reset_requests)
+### 4. 密码重置请求表 (password_reset_requests)
 
 存储密码重置请求信息。
 
@@ -214,29 +150,18 @@ CREATE INDEX idx_password_reset_requests_expires_at ON password_reset_requests(e
 CREATE OR REPLACE FUNCTION create_user_profile_with_memberships(
     p_username VARCHAR(50),
     p_email VARCHAR(255),
-    p_note TEXT DEFAULT NULL,
-    p_requested_organization_ids UUID[] DEFAULT NULL
+    p_note TEXT DEFAULT NULL
 )
 RETURNS UUID
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_user_id UUID;
-    v_org_id UUID;
 BEGIN
     -- 创建用户资料
     INSERT INTO user_profiles (username, email, note)
     VALUES (p_username, p_email, p_note)
     RETURNING id INTO v_user_id;
-
-    -- 创建组织成员关系
-    IF p_requested_organization_ids IS NOT NULL THEN
-        FOREACH v_org_id IN ARRAY p_requested_organization_ids
-        LOOP
-            INSERT INTO user_organization_memberships (user_id, organization_id)
-            VALUES (v_user_id, v_org_id);
-        END LOOP;
-    END IF;
 
     RETURN v_user_id;
 END;
@@ -256,8 +181,7 @@ RETURNS TABLE (
     role VARCHAR(20),
     status VARCHAR(20),
     note TEXT,
-    created_at TIMESTAMP WITH TIME ZONE,
-    organizations JSON
+    created_at TIMESTAMP WITH TIME ZONE
 )
 LANGUAGE plpgsql
 AS $$
@@ -269,21 +193,7 @@ BEGIN
         up.role,
         up.status,
         up.note,
-        up.created_at,
-        COALESCE(
-            (SELECT json_agg(
-                json_build_object(
-                    'org_id', uom.organization_id,
-                    'name', o.name,
-                    'role_in_org', uom.role_in_org,
-                    'status_in_org', uom.status_in_org
-                )
-            )
-            FROM user_organization_memberships uom
-            JOIN organizations o ON o.id = uom.organization_id
-            WHERE uom.user_id = up.id),
-            '[]'::json
-        ) as organizations
+        up.created_at
     FROM user_profiles up
     ORDER BY up.created_at DESC
     LIMIT p_limit
@@ -332,15 +242,6 @@ CREATE TRIGGER trigger_rooms_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### 3. 组织更新触发器
-
-```sql
-CREATE TRIGGER trigger_organizations_updated_at
-    BEFORE UPDATE ON organizations
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-```
-
 ## 视图
 
 ### 1. 房间成员视图
@@ -357,25 +258,6 @@ SELECT
     up.status as user_status
 FROM room_members rm
 JOIN user_profiles up ON up.id = rm.user_id;
-```
-
-### 2. 组织成员视图
-
-```sql
-CREATE VIEW organization_members_view AS
-SELECT
-    uom.id,
-    uom.organization_id,
-    uom.user_id,
-    uom.role_in_org,
-    uom.status_in_org,
-    uom.joined_at,
-    up.username,
-    up.status as user_status,
-    o.name as organization_name
-FROM user_organization_memberships uom
-JOIN user_profiles up ON up.id = uom.user_id
-JOIN organizations o ON o.id = uom.organization_id;
 ```
 
 ## 约束和规则
@@ -395,7 +277,6 @@ JOIN organizations o ON o.id = uom.organization_id;
 - 用户名唯一性
 - 邮箱唯一性
 - 房间成员唯一性
-- 组织成员唯一性
 
 ## 性能优化
 

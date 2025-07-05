@@ -4,7 +4,7 @@ This document outlines the current understanding of the GameConnecting project, 
 
 ## 1. Project Overview & Purpose
 
-GameConnecting is a platform designed to facilitate real-time connections for gaming purposes. It appears to involve user authentication, user profiles, friend management, community features through organizations, and chat rooms (evolved from an earlier "servers" concept). The platform aims to allow users to create and join these rooms for interaction. It includes administrative functionalities for user and organization management.
+GameConnecting is a platform designed to facilitate real-time connections for gaming purposes. It appears to involve user authentication, user profiles, friend management, and chat rooms (evolved from an earlier "servers" concept). The platform aims to allow users to create and join these rooms for interaction. It includes administrative functionalities for user and room management.
 
 ## 2. Technology Stack
 
@@ -41,10 +41,6 @@ GameConnecting is a platform designed to facilitate real-time connections for ga
     *   Displays user's organization memberships.
 *   **Friendship System (`friends.html`)**:
     *   Basic structure and APIs are in place (`friends.js`, `api/friends.js`). Detailed functionality requires further exploration.
-*   **Organizations (Multi-Organization Features)**:
-    *   Admins can manage organizations and user memberships within them (`admin.html`).
-    *   Users can view their own organization memberships (`profile.html`).
-    *   Backend API and services exist for organization and membership management.
 *   **Rooms/Servers (Chat Rooms)**:
     *   Users can create rooms (name, description; type defaults to 'public') via `POST /api/rooms/create`.
     *   Users can list public rooms via `GET /api/rooms/list` (used by `servers.js`).

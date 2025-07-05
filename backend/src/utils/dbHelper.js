@@ -35,7 +35,7 @@ export const dbHelper = {
             find: (conditions, options = {}) => {
                 let query = supabase.from(table).select(options.select || '*');
                 if (conditions) query = query.match(conditions);
-                if (options.orderBy) query = query.order(options.orderBy.field, options.orderBy);
+                if (options.orderBy) query = query.order(options.orderBy.field, { ascending: options.orderBy.ascending });
                 return this.execute(() => query);
             },
 

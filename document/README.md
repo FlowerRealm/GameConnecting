@@ -114,8 +114,6 @@ npm run dev
 - `user_profiles`: 用户资料表
 - `rooms`: 房间/服务器表
 - `room_members`: 房间成员表
-- `organizations`: 组织表
-- `user_organization_memberships`: 用户组织关系表
 - `password_reset_requests`: 密码重置请求表
 
 ## 安全特性

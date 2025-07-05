@@ -1,5 +1,5 @@
 import { apiService } from './apiService.js';
-import { store } from './store.js';
+import { store } from './utils.js';
 
 export class AuthManager {
     static #instance = null;

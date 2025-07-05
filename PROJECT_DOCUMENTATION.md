@@ -15,13 +15,12 @@
 
 ## 项目概述
 
-GameConnecting是一个实时游戏社交平台，支持用户注册、认证、房间管理、组织管理和实时聊天功能。
+GameConnecting是一个实时游戏社交平台，支持用户注册、认证、房间管理和实时聊天功能。
 
 ### 核心特性
 - 用户名注册（无需邮箱）
 - 角色权限管理（用户/管理员）
 - 房间（服务器）管理
-- 组织管理
 - 好友系统
 - 实时聊天
 - 管理员审批机制
@@ -95,33 +94,7 @@ CREATE TABLE public.room_members (
 );
 ```
 
-#### 4. organizations (组织表)
-```sql
-CREATE TABLE public.organizations (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name text NOT NULL,                     -- 组织名称
-    description text,                       -- 组织描述
-    created_by uuid REFERENCES user_profiles(id),
-    created_at timestamptz DEFAULT current_timestamp,
-    updated_at timestamptz DEFAULT current_timestamp
-);
-```
-
-#### 5. user_organization_memberships (用户组织成员关系表)
-```sql
-CREATE TABLE public.user_organization_memberships (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid REFERENCES user_profiles(id) ON DELETE CASCADE,
-    organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
-    role_in_org text DEFAULT 'member',      -- 组织内角色
-    status_in_org text DEFAULT 'pending_approval', -- 状态: 'pending_approval', 'active', 'suspended'
-    joined_at timestamptz DEFAULT current_timestamp,
-    updated_at timestamptz DEFAULT current_timestamp,
-    UNIQUE(user_id, organization_id)
-);
-```
-
-#### 6. password_reset_requests (密码重置请求表)
+#### 4. password_reset_requests (密码重置请求表)
 ```sql
 CREATE TABLE public.password_reset_requests (
     id uuid PRIMARY KEY NOT NULL,
@@ -138,7 +111,6 @@ CREATE TABLE public.password_reset_requests (
 ### 索引和约束
 - 用户名唯一索引
 - 房间成员唯一约束
-- 组织成员唯一约束
 - 自动更新时间戳触发器
 
 ---
@@ -153,8 +125,7 @@ POST /auth/register
 {
     "username": "string",
     "password": "string",
-    "note": "string (optional)",
-    "requestedOrganizationIds": ["uuid"] (optional)
+    "note": "string (optional)"
 }
 ```
 
@@ -320,15 +291,7 @@ GET /admin/users?page=1&limit=10
                 "role": "string",
                 "status": "string",
                 "note": "string",
-                "createdAt": "timestamp",
-                "organizations": [
-                    {
-                        "org_id": "uuid",
-                        "name": "string",
-                        "role_in_org": "string",
-                        "status_in_org": "string"
-                    }
-                ]
+                "createdAt": "timestamp"
             }
         ],
         "total": 100,
@@ -356,60 +319,7 @@ PUT /admin/users/{userId}/status
 }
 ```
 
-### 4. 组织相关
-
-#### 获取组织列表请求
-```json
-GET /api/admin/organizations?page=1&limit=10
-```
-
-#### 获取组织列表响应
-```json
-{
-    "success": true,
-    "data": {
-        "organizations": [
-            {
-                "id": "uuid",
-                "name": "string",
-                "description": "string",
-                "created_by": "uuid",
-                "created_at": "timestamp",
-                "member_count": 0
-            }
-        ],
-        "total": 50,
-        "page": 1,
-        "totalPages": 5,
-        "limit": 10
-    }
-}
-```
-
-#### 创建组织请求
-```json
-POST /api/admin/organizations
-{
-    "name": "string",
-    "description": "string (optional)"
-}
-```
-
-#### 创建组织响应
-```json
-{
-    "success": true,
-    "data": {
-        "id": "uuid",
-        "name": "string",
-        "description": "string",
-        "created_by": "uuid",
-        "created_at": "timestamp"
-    }
-}
-```
-
-### 5. 密码重置相关
+### 4. 密码重置相关
 
 #### 请求密码重置
 ```json
@@ -473,13 +383,12 @@ POST /auth/password/reset
 
 ### 1. 认证模块 (authService.js)
 
-#### registerUser(password, username, note, requestedOrganizationIds)
+#### registerUser(password, username, note)
 **功能**: 用户注册
 **参数**:
 - `password`: 用户密码
 - `username`: 用户名
 - `note`: 备注信息
-- `requestedOrganizationIds`: 请求加入的组织ID数组
 
 **流程**:
 1. 规范化用户名并生成占位邮箱
@@ -540,67 +449,6 @@ POST /auth/password/reset
 1. 检查用户是否已是成员
 2. 根据房间类型处理加入逻辑
 3. 添加用户到房间成员表
-
-### 3. 管理员模块 (adminOrganizationService.js)
-
-#### listAllOrganizations(queryParams)
-**功能**: 获取所有组织列表
-**参数**:
-- `queryParams`: 查询参数（分页等）
-
-**返回**: 分页的组织列表
-
-#### createOrganization(orgData, creatorId)
-**功能**: 创建组织
-**参数**:
-- `orgData`: 组织数据
-- `creatorId`: 创建者ID
-
-**流程**:
-1. 验证组织名称唯一性
-2. 创建组织记录
-3. 将创建者添加为组织成员
-
-### 4. 前端状态管理 (AuthManager.js)
-
-#### login(username, password)
-**功能**: 前端登录处理
-**流程**:
-1. 调用后端登录API
-2. 保存认证数据到localStorage和内存缓存
-3. 解析Token过期时间
-4. 触发登录事件
-
-#### isAuthenticated()
-**功能**: 检查用户认证状态
-**流程**:
-1. 检查Token是否存在
-2. 验证Token是否过期
-3. 如果即将过期，尝试刷新Token
-4. 返回认证状态
-
-#### refreshToken()
-**功能**: 刷新访问令牌
-**流程**:
-1. 获取存储的刷新令牌
-2. 调用后端刷新API
-3. 更新本地存储的令牌
-4. 更新内存缓存
-
-### 5. API通信模块 (apiService.js)
-
-#### request(endpoint, options)
-**功能**: 统一的API请求处理
-**参数**:
-- `endpoint`: API端点
-- `options`: 请求选项
-
-**特性**:
-- 自动添加认证头
-- 请求缓存机制
-- 防抖处理
-- 错误处理
-- 性能监控
 
 ---
 
@@ -673,7 +521,7 @@ POST /auth/password/reset
 
 #### POST /auth/register
 用户注册
-- **请求体**: {username, password, note?, requestedOrganizationIds?}
+- **请求体**: {username, password, note?}
 - **响应**: {success, message, data: {userId}}
 
 #### POST /auth/login
@@ -726,32 +574,6 @@ POST /auth/password/reset
 - **请求体**: {status, note?}
 - **响应**: {success, message}
 
-#### GET /api/admin/organizations
-获取组织列表
-- **查询参数**: page, limit
-- **响应**: {success, data: {organizations, total, page, totalPages, limit}}
-
-#### POST /api/admin/organizations
-创建组织
-- **请求体**: {name, description?}
-- **响应**: {success, data: organization}
-
-### 用户接口
-
-#### GET /users/all
-获取所有用户
-- **查询参数**: page, limit
-- **响应**: {success, data: {users, total, page, totalPages, limit}}
-
-#### POST /users/me/password
-修改密码
-- **请求体**: {password}
-- **响应**: {success, message}
-
-#### GET /users/me/organizations
-获取用户组织
-- **响应**: {success, data: [organization]}
-
 ---
 
 ## 前端组件文档
@@ -797,7 +619,6 @@ Socket.IO连接管理
 
 #### 管理员页面 (admin.js)
 - 用户管理
-- 组织管理
 - 审批功能
 - 分页控制
 
@@ -994,7 +815,6 @@ npm run db:migrate:up
 ### v1.0.0 (当前版本)
 - 基础用户认证系统
 - 房间管理功能
-- 组织管理功能
 - 管理员审批系统
 - 实时聊天功能
 - 密码重置功能

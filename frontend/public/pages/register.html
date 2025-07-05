@@ -20,39 +20,32 @@
     </nav>
 
     <div class="register-container glassmorphic-container">
-        <h1>注册</h1>
+        <h1><i class="fas fa-user-plus"></i> 注册</h1>
         <div id="error" class="error hidden"></div>
         <form id="register-form">
             <div class="form-group">
-                <label for="username">用户名</label>
+                <label for="username"><i class="fas fa-user"></i> 用户名</label>
                 <input type="text" id="username" pattern="[a-zA-Z0-9]{3,20}" title="3-20个字符，只能包含字母和数字" required>
                 <small class="form-text">3-20个字符，只能包含字母和数字</small>
             </div>
             <div class="form-group">
-                <label for="password">密码</label>
+                <label for="password"><i class="fas fa-lock"></i> 密码</label>
                 <input type="password" id="password" pattern=".{6,}" title="密码至少6个字符" required>
                 <small class="form-text">密码至少6个字符</small>
             </div>
             <div class="form-group">
-                <label for="confirm-password">确认密码</label>
+                <label for="confirm-password"><i class="fas fa-lock"></i> 确认密码</label>
                 <input type="password" id="confirm-password" required>
             </div>
             <div class="form-group">
-                <label for="note">备注</label>
+                <label for="note"><i class="fas fa-sticky-note"></i> 备注</label>
                 <textarea id="note" rows="3" placeholder="请简要说明您注册账号的目的（可选）"></textarea>
                 <div>
                     <small class="form-text">请简要说明您注册账号的目的，这将帮助管理员更快地审核您的账号</small>
                 </div>
             </div>
-            <div class="form-group">
-                <label>希望加入的组织 (可选):</label>
-                <div id="organization-select-container" class="checkbox-group-container">
-                    <p>Loading organizations...</p>
-                    <!-- Checkboxes will be populated here by register.js -->
-                </div>
-                <small class="form-text">选择您希望加入的一个或多个组织，您的请求将会发送给组织管理员审核。</small>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">注册</button>
+            <button type="submit" class="btn btn-primary btn-block modal-button primary" style="font-size:1.1rem;"><i
+                    class="fas fa-user-plus"></i> 注册</button>
             <div class="links">
                 <a href="/login">已有账号？立即登录</a>
             </div>

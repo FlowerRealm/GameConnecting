@@ -6,14 +6,14 @@ import {
     requestPasswordReset,
     verifyResetToken,
     resetPassword,
-} from '../services/authService.js';
+} from '../services/userService.js';
 
 const router = express.Router();
 
 // POST /register - User registration
 router.post('/register', async (req, res) => {
     try {
-        const { password, username, note, requestedOrganizationIds } = req.body;
+        const { password, username, note } = req.body;
 
         if (!password || !username) {
             return res.status(400).json({ success: false, message: '密码和用户名不能为空' });
@@ -23,12 +23,12 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ success: false, message: '密码长度至少为6位' });
         }
 
-        const result = await registerUser(password, username, note, requestedOrganizationIds || []);
+        const result = await registerUser(password, username, note);
 
         if (result.success) {
             res.status(201).json({
                 success: true,
-                message: '注册成功，请等待管理员审核。如项目启用邮件确认，请先确认邮箱。',
+                message: '注册成功，请等待管理员审核。如项目启用邮箱确认，请先确认邮箱。',
                 data: result.data
             });
         } else {

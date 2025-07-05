@@ -1,6 +1,6 @@
 import { apiService } from './apiService.js';
 import { showNotification } from './utils.js';
-import { clearCache } from './admin.js';
+import { clearCache, updateUser } from './admin.js';
 
 let selectedUserId = null;
 
@@ -23,29 +23,19 @@ function getStatusBadge(status) {
 function getActionButtons(user) {
     return `
         <div class="action-buttons">
-            <button class="action-button review-button" data-review data-user-id="${user.id}">
-                <i class="fas fa-user-check"></i>
-                审核
-            </button>
+            <button class="action-button edit-button" data-edit data-user-id="${user.id}"><i class="fas fa-edit"></i> 操作</button>
+            <button class="action-button delete-button" data-delete data-user-id="${user.id}"><i class="fas fa-trash"></i> 删除</button>
+            ${user.status === 'pending' ? `<button class="action-button review-button" data-review data-user-id="${user.id}"><i class="fas fa-user-check"></i> 审核</button>` : ''}
         </div>
     `;
 }
 
 export function renderUsers(data, currentTab, limit) {
     let users = [];
-    let totalUsers = 0;
-    let currentPageNum = 1;
-    let totalPages = 1;
-
     if (Array.isArray(data)) {
         users = data;
-        totalUsers = data.length;
-        document.getElementById('pagination').innerHTML = '';
     } else if (data.users || data.data) {
         users = data.users || data.data;
-        totalUsers = data.total;
-        currentPageNum = data.page;
-        totalPages = data.totalPages;
     } else {
         console.warn("renderUsers received unexpected data format:", data);
         document.getElementById('userTable').innerHTML = '<tr><td colspan="7" class="no-data">数据格式错误。</td></tr>';
@@ -106,7 +96,7 @@ export function renderUsers(data, currentTab, limit) {
                     </td>
                     <td>${reviewInfo}</td>
                     <td>
-                        ${user.status === 'pending' ? getActionButtons(user) : '-'}
+                        ${getActionButtons(user)}
                     </td>
                 </tr>
             `;
@@ -114,17 +104,27 @@ export function renderUsers(data, currentTab, limit) {
     }
     html += '</tbody></table>';
     table.innerHTML = html;
-
-    if ((currentTab === 'all' || (data && data.totalPages > 1)) && totalUsers > (data.limit || limit)) {
-        renderPagination(totalUsers, currentPageNum, totalPages);
-    } else {
-        document.getElementById('pagination').innerHTML = '';
-    }
+    document.getElementById('pagination').innerHTML = '';
 
     document.querySelectorAll('[data-review]').forEach(button => {
         const userId = button.dataset.userId;
         if (userId) {
             button.addEventListener('click', () => showReviewModal(userId));
+        }
+    });
+
+    // 为操作按钮绑定点击事件
+    document.querySelectorAll('[data-edit]').forEach(button => {
+        const userId = button.dataset.userId;
+        if (userId) {
+            button.addEventListener('click', () => showEditModal(userId));
+        }
+    });
+    // 新增：为删除按钮绑定事件
+    document.querySelectorAll('[data-delete]').forEach(button => {
+        const userId = button.dataset.userId;
+        if (userId) {
+            button.addEventListener('click', () => handleDeleteUser(userId));
         }
     });
 }
@@ -156,11 +156,70 @@ function showReviewModal(userId) {
     modal.style.display = 'block';
 }
 
+function showEditModal(userId) {
+    selectedUserId = userId; // 保证全局 userId 正确
+    const modal = document.getElementById('editUserModal');
+    modal.style.display = 'block';
+
+    // 获取用户信息
+    apiService.request(`/api/users/${userId}`)
+        .then(response => {
+            if (response.success && response.data) {
+                const user = response.data;
+                const modalBody = modal.querySelector('.modal-body');
+                modalBody.innerHTML = `
+                    <div class="form-group">
+                        <label for="editStatus"><i class="fas fa-user-shield"></i> 状态:</label>
+                        <select id="editStatus" class="styled-select">
+                            <option value="active" ${user.status === 'active' ? 'selected' : ''}>已激活</option>
+                            <option value="banned" ${user.status === 'banned' ? 'selected' : ''}>已封禁</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editRole"><i class="fas fa-user-tag"></i> 角色:</label>
+                        <select id="editRole" class="styled-select">
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>普通用户</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>管理员</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPassword"><i class="fas fa-key"></i> 新密码:</label>
+                        <input type="password" id="editPassword" class="styled-input" placeholder="如需重置请输入新密码">
+                    </div>
+                `;
+                // 不再绑定 change 事件，改为只在保存按钮点击时统一提交
+            } else {
+                showNotification('获取用户信息失败', 'error');
+                closeModal();
+            }
+        })
+        .catch(error => {
+            console.error('获取用户信息失败:', error);
+            showNotification('获取用户信息失败: ' + error.message, 'error');
+            closeModal();
+        });
+}
+
 export function closeModal() {
     document.getElementById('reviewModal').style.display = 'none';
+    const editModal = document.getElementById('editUserModal');
+    if (editModal) editModal.style.display = 'none';
     document.getElementById('adminNote').value = '';
     selectedUserId = null;
 }
+
+// 为保存编辑对话框按钮绑定点击事件
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('closeEditModalBtn').addEventListener('click', closeModal);
+    document.getElementById('saveEditBtn').addEventListener('click', () => {
+        const userId = selectedUserId;
+        const status = document.getElementById('editStatus').value;
+        const role = document.getElementById('editRole').value;
+        const password = document.getElementById('editPassword').value; // 获取新密码
+        updateUser(userId, status, role, password); // 传递新密码
+        closeModal();
+    });
+});
 
 export async function handleReview(status, loadData) {
     if (!selectedUserId) return;
@@ -195,4 +254,24 @@ export async function handleReview(status, loadData) {
     } catch (error) {
         showNotification(error.message || '审核操作失败', 'error');
     }
+}
+
+function handleDeleteUser(userId) {
+    if (!confirm('确定要删除该用户吗？此操作不可恢复！')) return;
+    apiService.request(`/admin/users/${userId}`, { method: 'DELETE' })
+        .then(response => {
+            if (response.success) {
+                showNotification('用户删除成功', 'success');
+                clearCache('all_');
+                clearCache('pending_');
+                // 重新加载数据
+                if (typeof loadData === 'function') loadData();
+                else window.location.reload();
+            } else {
+                showNotification(response.message || '用户删除失败', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification(error.message || '用户删除失败', 'error');
+        });
 }

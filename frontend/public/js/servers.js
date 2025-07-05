@@ -62,6 +62,10 @@ async function loadServers() {
 
 function renderServers(servers) {
     const serverListContainer = document.getElementById('serverList');
+    if (!serverListContainer) {
+        console.error('serverList container not found!');
+        return;
+    }
     serverListContainer.innerHTML = '';
 
     if (!servers || servers.length === 0) {
@@ -85,9 +89,9 @@ function renderServers(servers) {
                 </tbody>
             </table>
             <div style="text-align:center;margin-top:20px">
-                <button class="btn btn-primary" onclick="showAddServerModal()">
-                    <i class="fas fa-plus"></i> 创建服务器
-                </button>
+            <button class="btn btn-primary" onclick="showAddServerModal()">
+                <i class="fas fa-plus"></i> 创建服务器
+            </button>
             </div>
         `;
         return;
@@ -125,7 +129,7 @@ function renderServers(servers) {
                         <button class="btn btn-secondary btn-sm" onclick="showServerDetail('${server.id}')">
                             <i class="fas fa-eye"></i> 详情
                         </button>
-                    </div>
+                </div>
                 </td>
             </tr>
         `;
@@ -175,12 +179,12 @@ async function handleServerFormSubmit(data) {
         const response = await apiService.request(endpoint, {
             method,
             body: JSON.stringify({ name, description })
-        });
+            });
 
         if (response.success) {
             showNotification(editingServerId ? '服务器更新成功' : '服务器创建成功', 'success');
             modalHandler.close('addServerModal');
-            loadServers();
+                    loadServers();
         } else {
             showNotification(response.message || '操作失败', 'error');
         }
@@ -318,7 +322,7 @@ function renderServerMembers(members) {
                     <span class="member-role">${member.role || '成员'}</span>
                 </div>
                 ${currentModalServerInfo.isOwner && member.user_id !== auth.getUserId() ?
-                    `<button class="btn btn-danger btn-sm" onclick="kickMember('${member.user_id}')">
+                `<button class="btn btn-danger btn-sm" onclick="kickMember('${member.user_id}')">
                         <i class="fas fa-user-minus"></i> 踢出
                     </button>` : ''}
             </li>
@@ -329,7 +333,7 @@ function renderServerMembers(members) {
 }
 
 // 将踢出成员函数暴露给全局
-window.kickMember = async function(userId) {
+window.kickMember = async function (userId) {
     if (!confirm('确定要将此成员踢出服务器吗？')) {
         return;
     }
@@ -400,8 +404,8 @@ function renderJoinRequests(requests) {
     }
 
     let html = '';
-    requests.forEach(request => {
-        html += `
+        requests.forEach(request => {
+            html += `
             <div class="join-request-item" data-request-id="${request.id}" data-server-id="${currentModalServerInfo.id}">
                 <div class="join-request-info">
                     <i class="fas fa-user"></i>
@@ -418,7 +422,7 @@ function renderJoinRequests(requests) {
                     </div>
                 </div>
             `;
-    });
+        });
 
     container.innerHTML = html;
 }
